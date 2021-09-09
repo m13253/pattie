@@ -1,6 +1,6 @@
 use super::Tensor;
 use ndarray::{Dimension, Ix};
 
-pub trait Matrix<'a>: Tensor<'a> {
+pub trait Matrix: Tensor {
     type Dim: Dimension<Pattern = (Ix, Ix)>;
 }

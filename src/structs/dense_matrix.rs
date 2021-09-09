@@ -1,18 +1,18 @@
 use crate::traits;
-use ndarray::{iter::IndexedIter, Array2, Ix, Ix2};
+use ndarray::{Array2, Ix, Ix2};
 
 type DenseMatrix<ValType> = Array2<ValType>;
 
-impl<'a, ValType> traits::Matrix<'a> for DenseMatrix<ValType>
+impl<ValType> traits::Matrix for DenseMatrix<ValType>
 where
-    ValType: 'a + traits::ValType,
+    ValType: traits::ValType,
 {
     type Dim = Ix2;
 }
 
-impl<'a, ValType> traits::Tensor<'a> for DenseMatrix<ValType>
+impl<ValType> traits::Tensor for DenseMatrix<ValType>
 where
-    ValType: 'a + traits::ValType,
+    ValType: traits::ValType,
 {
     type ValType = ValType;
     type Dim = Ix2;

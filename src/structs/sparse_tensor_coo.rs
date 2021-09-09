@@ -8,10 +8,10 @@ pub struct SparseTensorCOO<ValType: traits::ValType, IdxType: traits::IdxType> {
     values: Array1<ValType>,
 }
 
-impl<'a, ValType, IdxType> traits::Tensor<'a> for SparseTensorCOO<ValType, IdxType>
+impl<ValType, IdxType> traits::Tensor for SparseTensorCOO<ValType, IdxType>
 where
-    ValType: 'a + traits::ValType,
-    IdxType: 'a + traits::IdxType,
+    ValType: traits::ValType,
+    IdxType: traits::IdxType,
 {
     type ValType = ValType;
     type Dim = IxDyn;

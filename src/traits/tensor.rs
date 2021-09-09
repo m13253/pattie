@@ -1,8 +1,8 @@
 use ndarray::{Dimension, Ix};
 
-pub trait Tensor<'a> {
-    type ValType: 'a + super::ValType;
-    type Dim: 'a + Dimension;
+pub trait Tensor {
+    type ValType: super::ValType;
+    type Dim: Dimension;
 
     fn dim(&self) -> <Self::Dim as Dimension>::Pattern {
         self.raw_dim().into_pattern()

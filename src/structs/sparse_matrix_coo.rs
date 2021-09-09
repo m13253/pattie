@@ -7,18 +7,18 @@ pub struct SparseMatrixCOO<ValType: traits::ValType, IdxType: traits::IdxType> {
     values: Array1<ValType>,
 }
 
-impl<'a, ValType, IdxType> traits::Matrix<'a> for SparseMatrixCOO<ValType, IdxType>
+impl<ValType, IdxType> traits::Matrix for SparseMatrixCOO<ValType, IdxType>
 where
-    ValType: 'a + traits::ValType,
-    IdxType: 'a + traits::IdxType,
+    ValType: traits::ValType,
+    IdxType: traits::IdxType,
 {
     type Dim = Ix2;
 }
 
-impl<'a, ValType, IdxType> traits::Tensor<'a> for SparseMatrixCOO<ValType, IdxType>
+impl<ValType, IdxType> traits::Tensor for SparseMatrixCOO<ValType, IdxType>
 where
-    ValType: 'a + traits::ValType,
-    IdxType: 'a + traits::IdxType,
+    ValType: traits::ValType,
+    IdxType: traits::IdxType,
 {
     type Dim = Ix2;
     type ValType = ValType;

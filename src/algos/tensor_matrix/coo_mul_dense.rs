@@ -1,8 +1,9 @@
 use crate::algos::tensor::SortCOOTensor;
-use crate::structs::{matrix, tensor};
+use crate::structs::matrix::DenseMatrix;
+use crate::structs::tensor::COOTensor;
 use crate::traits::{IdxType, Tensor, ValType};
 use anyhow::Result;
-use ndarray::Axis;
+use ndarray::{Axis, Dimension};
 
 pub struct COOTensorMulDenseMatrix {
     common_axis: Axis,
@@ -20,7 +21,7 @@ impl COOTensorMulDenseMatrix {
         self
     }
 
-    pub fn prepare<VT, IT>(&self, tsr: &mut tensor::COOTensor<VT, IT>) -> ()
+    pub fn prepare<VT, IT>(&self, tsr: &mut COOTensor<VT, IT>)
     where
         VT: ValType,
         IT: IdxType,
@@ -31,13 +32,20 @@ impl COOTensorMulDenseMatrix {
 
     pub fn execute<VT, IT>(
         &self,
-        a: &tensor::COOTensor<VT, IT>,
-        b: &matrix::DenseMatrix<VT>,
-    ) -> Result<tensor::COOTensor<VT, IT>>
+        a: &COOTensor<VT, IT>,
+        b: &DenseMatrix<VT>,
+    ) -> Result<COOTensor<VT, IT>>
     where
         VT: ValType,
         IT: IdxType,
     {
-        todo!()
+        let mut c_dim = a.raw_dim();
+        c_dim.as_array_view_mut()[self.common_axis.index()] = b.nrows();
+
+        let mut c = COOTensor::<VT, IT>::zeros(c_dim);
+
+        todo!();
+
+        Ok(c)
     }
 }

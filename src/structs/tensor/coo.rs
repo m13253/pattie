@@ -1,14 +1,14 @@
 use super::coo_iter::COOIter;
 use super::coo_iter_mut::COOIterMut;
-use crate::traits::{self, Tensor};
+use crate::traits::{IdxType, Tensor, ValType};
 use ndarray::{aview0, aview1, Array1, Array2, Axis, Dimension, Ix, IxDyn, ShapeBuilder};
 use num::NumCast;
 
 #[derive(Clone, Debug)]
 pub struct COOTensor<VT, IT>
 where
-    VT: traits::ValType,
-    IT: traits::IdxType,
+    VT: ValType,
+    IT: IdxType,
 {
     dim: IxDyn,
     is_sorted: bool,
@@ -19,8 +19,8 @@ where
 
 impl<VT, IT> COOTensor<VT, IT>
 where
-    VT: traits::ValType,
-    IT: traits::IdxType,
+    VT: ValType,
+    IT: IdxType,
 {
     pub fn zeros<Sh>(shape: Sh) -> Self
     where
@@ -93,10 +93,10 @@ where
     }
 }
 
-impl<VT, IT> traits::Tensor<VT> for COOTensor<VT, IT>
+impl<VT, IT> Tensor<VT> for COOTensor<VT, IT>
 where
-    VT: traits::ValType,
-    IT: traits::IdxType,
+    VT: ValType,
+    IT: IdxType,
 {
     type Dim = IxDyn;
 

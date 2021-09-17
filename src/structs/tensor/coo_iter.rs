@@ -1,27 +1,27 @@
-use ndarray::{iter::Iter, iter::LanesIter, Ix1};
-
-use crate::traits;
+use crate::traits::{IdxType, TensorIter, ValType};
+use ndarray::iter::{Iter, LanesIter};
+use ndarray::Ix1;
 
 pub struct COOIter<'a, VT, IT>
 where
-    VT: 'a + traits::ValType,
-    IT: 'a + traits::IdxType,
+    VT: 'a + ValType,
+    IT: 'a + IdxType,
 {
     pub(super) indices: LanesIter<'a, IT, Ix1>,
     pub(super) values: Iter<'a, VT, Ix1>,
 }
 
-impl<'a, VT, IT> traits::TensorIter<'a, VT, IT> for COOIter<'a, VT, IT>
+impl<'a, VT, IT> TensorIter<'a, VT, IT> for COOIter<'a, VT, IT>
 where
-    VT: 'a + traits::ValType,
-    IT: 'a + traits::IdxType,
+    VT: 'a + ValType,
+    IT: 'a + IdxType,
 {
 }
 
 impl<'a, VT, IT> Iterator for COOIter<'a, VT, IT>
 where
-    VT: 'a + traits::ValType,
-    IT: 'a + traits::IdxType,
+    VT: 'a + ValType,
+    IT: 'a + IdxType,
 {
     type Item = (&'a [IT], &'a VT);
 
@@ -39,8 +39,8 @@ where
 
 impl<'a, VT, IT> ExactSizeIterator for COOIter<'a, VT, IT>
 where
-    VT: 'a + traits::ValType,
-    IT: 'a + traits::IdxType,
+    VT: 'a + ValType,
+    IT: 'a + IdxType,
 {
     fn len(&self) -> usize {
         let len1 = self.indices.len();

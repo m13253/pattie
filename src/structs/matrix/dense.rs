@@ -1,32 +1,32 @@
-use crate::traits;
+use crate::traits::{Tensor, ValType};
 use ndarray::{Array2, Dimension, Ix2, ShapeBuilder};
 use std::ops::{Deref, DerefMut};
 
 #[derive(Clone, Debug)]
-pub struct Dense<VT>
+pub struct DenseMatrix<VT>
 where
-    VT: traits::ValType,
+    VT: ValType,
 {
     data: Array2<VT>,
 }
 
-impl<VT> Dense<VT>
+impl<VT> DenseMatrix<VT>
 where
-    VT: traits::ValType,
+    VT: ValType,
 {
-    pub fn zeros<Sh>(shape: Sh) -> Dense<VT>
+    pub fn zeros<Sh>(shape: Sh) -> DenseMatrix<VT>
     where
         Sh: ShapeBuilder<Dim = Ix2>,
     {
-        Dense {
+        DenseMatrix {
             data: Array2::zeros(shape),
         }
     }
 }
 
-impl<VT> traits::Tensor<VT> for Dense<VT>
+impl<VT> Tensor<VT> for DenseMatrix<VT>
 where
-    VT: traits::ValType,
+    VT: ValType,
 {
     type Dim = Ix2;
 
@@ -46,31 +46,30 @@ where
         self.data.shape()
     }
 }
-impl<VT> traits::Matrix<VT> for Dense<VT> where VT: traits::ValType {}
 
-impl<VT> Deref for Dense<VT>
+impl<VT> Deref for DenseMatrix<VT>
 where
-    VT: traits::ValType,
+    VT: ValType,
 {
     type Target = Array2<VT>;
     fn deref(&self) -> &Self::Target {
         &self.data
     }
 }
-impl<VT> DerefMut for Dense<VT>
+impl<VT> DerefMut for DenseMatrix<VT>
 where
-    VT: traits::ValType,
+    VT: ValType,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }
 }
 
-impl<VT> From<Array2<VT>> for Dense<VT>
+impl<VT> From<Array2<VT>> for DenseMatrix<VT>
 where
-    VT: traits::ValType,
+    VT: ValType,
 {
     fn from(a: Array2<VT>) -> Self {
-        Dense { data: a }
+        DenseMatrix { data: a }
     }
 }

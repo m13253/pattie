@@ -1,19 +1,19 @@
-use crate::traits;
-use crate::{structs::tensor, traits::Tensor};
+use crate::structs::tensor;
+use crate::traits::{IdxType, Tensor, ValType};
 use ndarray::{Array1, Array2, ArrayView1, Axis};
 
-pub struct COOSort {
+pub struct SortCOOTensor {
     order: Array1<Axis>,
 }
 
-impl COOSort {
-    pub fn new() -> COOSort {
-        COOSort {
+impl SortCOOTensor {
+    pub fn new() -> Self {
+        Self {
             order: Array1::from_elem(0, Axis(0)),
         }
     }
 
-    pub fn with_order(mut self, order: ArrayView1<Axis>) -> COOSort {
+    pub fn with_order(mut self, order: ArrayView1<Axis>) -> Self {
         self.order = order.to_owned();
         for i in 0..order.len() {
             assert!(self.order.iter().find(|x| x.index() == i).is_some())
@@ -21,7 +21,7 @@ impl COOSort {
         self
     }
 
-    pub fn with_last_order(mut self, ndim: usize, last_order: Axis) -> COOSort {
+    pub fn with_last_order(mut self, ndim: usize, last_order: Axis) -> Self {
         assert!(last_order.index() < ndim);
         self.order = Array1::from_iter((0..ndim).map(|i| {
             if i + 1 == ndim {
@@ -37,17 +37,17 @@ impl COOSort {
 
     pub fn execute<VT, IT>(&self, tensor: &mut tensor::COOTensor<VT, IT>)
     where
-        VT: traits::ValType,
-        IT: traits::IdxType,
+        VT: ValType,
+        IT: IdxType,
     {
         fn index_less_than<VT, IT>(
-            order: &ArrayView1<Axis>,
+            order: &Array1<Axis>,
             a: &ArrayView1<IT>,
             b: &ArrayView1<IT>,
         ) -> bool
         where
-            VT: traits::ValType,
-            IT: traits::IdxType,
+            VT: ValType,
+            IT: IdxType,
         {
             for i in order.iter() {
                 if a[i.index()] >= b[i.index()] {
@@ -60,12 +60,12 @@ impl COOSort {
         fn sort_subtensor<VT, IT>(
             indices: &mut Array2<IT>,
             values: &mut Array1<VT>,
-            order: ArrayView1<Axis>,
+            order: &Array1<Axis>,
             from: usize,
             to: usize,
         ) where
-            VT: traits::ValType,
-            IT: traits::IdxType,
+            VT: ValType,
+            IT: IdxType,
         {
             if from >= to {
                 return;
@@ -103,8 +103,9 @@ impl COOSort {
         }
 
         assert_eq!(tensor.ndim(), self.order.len());
+        unsafe { tensor.set_sort_order() }.clone_from(&self.order);
         let (indices, values) = unsafe { tensor.raw_data_mut() };
 
-        sort_subtensor(indices, values, self.order.view(), 0, values.len());
+        sort_subtensor(indices, values, &self.order, 0, values.len());
     }
 }

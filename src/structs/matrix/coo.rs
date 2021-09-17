@@ -1,21 +1,21 @@
-use crate::traits;
+use crate::traits::{IdxType, Tensor, ValType};
 use ndarray::{Array1, Dimension, Ix, Ix2};
 
 #[derive(Clone, Debug)]
 pub struct COOMatrix<VT, IT>
 where
-    VT: traits::ValType,
-    IT: traits::IdxType,
+    VT: ValType,
+    IT: IdxType,
 {
     dim: Ix2,
     indices: Array1<[IT; 2]>,
     values: Array1<VT>,
 }
 
-impl<VT, IT> traits::Tensor<VT> for COOMatrix<VT, IT>
+impl<VT, IT> Tensor<VT> for COOMatrix<VT, IT>
 where
-    VT: traits::ValType,
-    IT: traits::IdxType,
+    VT: ValType,
+    IT: IdxType,
 {
     type Dim = Ix2;
 

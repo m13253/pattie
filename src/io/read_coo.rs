@@ -5,12 +5,12 @@ use ndarray::{Dimension, Ix, Ix0};
 use num::NumCast;
 use std::io;
 
-impl<VT, IT> tensor::COO<VT, IT>
+impl<VT, IT> tensor::COOTensor<VT, IT>
 where
     VT: traits::ValType,
     IT: traits::IdxType,
 {
-    pub fn read_from_text<R>(r: &mut R, index_offset: usize) -> Result<tensor::COO<VT, IT>>
+    pub fn read_from_text<R>(r: &mut R, index_offset: usize) -> Result<tensor::COOTensor<VT, IT>>
     where
         R: io::Read,
     {
@@ -25,7 +25,7 @@ where
             .map_err(|_| anyhow!("line 1: invalid number of dimensions"))?;
 
         if ndim == 0 {
-            return Ok(tensor::COO::zeros(Ix0().into_dyn()));
+            return Ok(tensor::COOTensor::zeros(Ix0().into_dyn()));
         }
 
         let shape = lines
@@ -45,7 +45,7 @@ where
             bail!("line 2: tensor shape does not match the header");
         }
 
-        let mut tsr = tensor::COO::<VT, IT>::zeros(shape);
+        let mut tsr = tensor::COOTensor::<VT, IT>::zeros(shape);
 
         for (line_no, line) in lines.enumerate() {
             let line = line?;

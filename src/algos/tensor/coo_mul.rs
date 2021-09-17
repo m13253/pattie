@@ -5,14 +5,14 @@ use anyhow::Result;
 pub struct COOMulCOO {}
 
 impl COOMulCOO {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new() -> COOMulCOO {
+        COOMulCOO {}
     }
 
-    pub fn mul<VT, IT>(
-        a: &tensor::COO<VT, IT>,
-        b: &tensor::COO<VT, IT>,
-    ) -> Result<tensor::COO<VT, IT>>
+    pub fn execute<VT, IT>(
+        a: &tensor::COOTensor<VT, IT>,
+        b: &tensor::COOTensor<VT, IT>,
+    ) -> Result<tensor::COOTensor<VT, IT>>
     where
         VT: traits::ValType,
         IT: traits::IdxType,

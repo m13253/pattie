@@ -5,7 +5,7 @@ use num::NumCast;
 use std::fmt::LowerExp;
 use std::io::{self, Write};
 
-impl<VT, IT> tensor::COO<VT, IT>
+impl<VT, IT> tensor::COOTensor<VT, IT>
 where
     VT: traits::ValType,
     IT: traits::IdxType,

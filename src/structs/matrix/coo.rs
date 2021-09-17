@@ -2,7 +2,7 @@ use crate::traits;
 use ndarray::{Array1, Dimension, Ix, Ix2};
 
 #[derive(Clone, Debug)]
-pub struct COO<VT, IT>
+pub struct COOMatrix<VT, IT>
 where
     VT: traits::ValType,
     IT: traits::IdxType,
@@ -12,7 +12,7 @@ where
     values: Array1<VT>,
 }
 
-impl<VT, IT> traits::Tensor<VT> for COO<VT, IT>
+impl<VT, IT> traits::Tensor<VT> for COOMatrix<VT, IT>
 where
     VT: traits::ValType,
     IT: traits::IdxType,

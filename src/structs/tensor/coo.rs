@@ -5,7 +5,7 @@ use ndarray::{aview0, aview1, Array1, Array2, Axis, Dimension, Ix, IxDyn, ShapeB
 use num::NumCast;
 
 #[derive(Clone, Debug)]
-pub struct COO<VT, IT>
+pub struct COOTensor<VT, IT>
 where
     VT: traits::ValType,
     IT: traits::IdxType,
@@ -17,7 +17,7 @@ where
     values: Array1<VT>,
 }
 
-impl<VT, IT> COO<VT, IT>
+impl<VT, IT> COOTensor<VT, IT>
 where
     VT: traits::ValType,
     IT: traits::IdxType,
@@ -93,7 +93,7 @@ where
     }
 }
 
-impl<VT, IT> traits::Tensor<VT> for COO<VT, IT>
+impl<VT, IT> traits::Tensor<VT> for COOTensor<VT, IT>
 where
     VT: traits::ValType,
     IT: traits::IdxType,

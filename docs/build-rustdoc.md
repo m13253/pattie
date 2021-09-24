@@ -1,9 +1,9 @@
 How to build Rustdoc
 --------------------
 
-First, install Rust toolchain.
+1. Install the Rust toolchain according to the [Rust Onboard](rust-onboard-en.md) article.
 
-```bash
-$ cargo doc --no-deps
-$ open ./target/doc/pattie/index.html
-```
+2. ```bash
+   $ cargo doc --no-deps
+   $ open ./target/doc/pattie/index.html
+   ```

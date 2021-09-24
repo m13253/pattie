@@ -1,3 +1,5 @@
+//! Tensors.
+
 mod coo;
 mod coo_iter;
 mod coo_iter_mut;

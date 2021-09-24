@@ -1,3 +1,5 @@
+//! Matrices.
+
 mod coo;
 mod dense;
 

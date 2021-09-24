@@ -1,4 +1,4 @@
-//! This module contains I/O routines.
+//! I/O routines.
 //!
 //! This module is automatically imported when you import the `structs` module.
 //!

@@ -5,25 +5,25 @@ use crate::traits::{IdxType, Tensor, ValType};
 use anyhow::Result;
 use ndarray::{Axis, Dimension};
 
-/// `COOTensorMulDenseMartix` is a task builder to multiply a `COOTensor` with a `DenseMatrix`.
+/// Task builder to multiply a `COOTensor` with a `DenseMatrix`.
 pub struct COOTensorMulDenseMatrix {
     common_axis: Option<Axis>,
 }
 
 impl COOTensorMulDenseMatrix {
-    /// `new` creates a new `COOTensorMulDenseMatrix` task builder.
+    /// Create a new `COOTensorMulDenseMatrix` task builder.
     /// Use `with_common_axis` to specify the common axis of multiplication.
     pub fn new() -> Self {
         Self { common_axis: None }
     }
 
-    /// `with_common_axis` sets the common axis of multiplication.
+    /// Set the common axis of multiplication.
     pub fn with_common_axis(mut self, common_axis: Axis) -> Self {
         self.common_axis = Some(common_axis);
         self
     }
 
-    /// `prepare` sorts the tensor according to the common axis.
+    /// Sort the tensor according to the common axis.
     ///
     /// This method modifies element order of the tensor.
     pub fn prepare<VT, IT>(&self, tsr: &mut COOTensor<VT, IT>)
@@ -36,7 +36,7 @@ impl COOTensorMulDenseMatrix {
         sort_task.execute(tsr);
     }
 
-    /// `execute` multiplies a `COOTensor` with a `DenseMatrix`.
+    /// Multiply a `COOTensor` with a `DenseMatrix`.
     ///
     /// This method assumes that the tensor is already sorted. Otherwise, call `prepare` first.
     pub fn execute<VT, IT>(

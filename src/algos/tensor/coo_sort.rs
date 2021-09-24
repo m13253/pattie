@@ -2,13 +2,13 @@ use crate::structs::tensor;
 use crate::traits::{IdxType, Tensor, ValType};
 use ndarray::{Array1, Array2, ArrayView1, Axis};
 
-/// `SortCOOTensor` is a task builder to sort the storage order of elements inside a `COOTensor`.
+/// Task builder to sort the storage order of elements inside a `COOTensor`.
 pub struct SortCOOTensor {
     order: Array1<Axis>,
 }
 
 impl SortCOOTensor {
-    /// `new` creates a new `SortCOOTensor` task builder.
+    /// Create a new `SortCOOTensor` task builder.
     /// Use `with_order` or `with_last_order` to specify the order of axis to sort tensors into.
     /// After configuring the task builder, use `execute` to perform the sort.
     pub fn new() -> Self {
@@ -17,7 +17,7 @@ impl SortCOOTensor {
         }
     }
 
-    /// `with_order` specifies the order of axis to sort tensors into.
+    /// Specify the order of axis to sort tensors into.
     ///
     /// # Example
     /// ```
@@ -66,7 +66,7 @@ impl SortCOOTensor {
         self
     }
 
-    /// `execute` performs the sort.
+    /// Perform the sorting.
     ///
     /// The sort operation uses quick-sort algorithm, but may change in future versions.
     ///

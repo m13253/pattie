@@ -3,7 +3,7 @@ use num::{Integer, Num, NumCast};
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
 
-/// `ValType` trait describes the type of a value inside a tensor.
+/// The type of a value inside a tensor.
 ///
 /// Integers, floats, `num::Complex` are all supported types.
 /// Moreover, any type that satisfies this trait can be used.
@@ -18,7 +18,7 @@ use std::str::FromStr;
 pub trait ValType: Num + Clone + Debug + Display + FromStr + Send + Sync {}
 impl<T> ValType for T where T: Num + Clone + Debug + Display + FromStr + Send + Sync {}
 
-/// `IdxType` trait describes the type of indices used in a tensor.
+/// The type of indices used in a tensor.
 ///
 /// `u16`, `u32`, `u64`, usize are all supported types.
 /// However, if the scale of the tensor is too large, narrow types may cause overflow and trigger panics.
@@ -33,7 +33,7 @@ impl<T> ValType for T where T: Num + Clone + Debug + Display + FromStr + Send + 
 pub trait IdxType: Integer + NumCast + Clone + Debug + Display + Send + Sync {}
 impl<T> IdxType for T where T: Integer + NumCast + Clone + Debug + Display + Send + Sync {}
 
-/// `Tensor<VT>` trait describes a tensor.
+/// Rust trait for a tensor.
 ///
 /// `VT` is the type of the values inside the tensor.
 ///
@@ -64,7 +64,7 @@ where
     /// ```
     type Dim: Dimension;
 
-    /// `dim` returns the pattern-match friendly version of the dimension.
+    /// The pattern-match friendly version of the dimension.
     ///
     /// If the dimension is known at compile-time, you will get `()`, `len`, `(rows, cols)`, etc.
     /// If the dimension is known only at runtime, you will get `ndarray::IxDyn`.
@@ -74,20 +74,20 @@ where
         self.raw_dim().into_pattern()
     }
 
-    /// `ndim` returns the number of dimensions of the tensor.
+    /// The number of dimensions of the tensor.
     ///
     /// For example, 0 means scalar, 1 means vector, 2 means matrix, etc.
     fn ndim(&self) -> usize {
         self.raw_dim().ndim()
     }
 
-    /// `num_non_zeros` returns the number of elements in this tensor taking storage space.
+    /// The number of elements in this tensor taking storage space.
     ///
     /// Note that this method also counts if elements are zero but taking storage space.
     /// This means that for dense tensors, `num_non_zeros` means the total number of elements.
     fn num_non_zeros(&self) -> usize;
 
-    /// `raw_dim` returns the dimension as `ndarray::Dim`.
+    /// The dimension as `ndarray::Dim`.
     ///
     /// If the dimension is known at compile-time, you will get `ndarray::Ix0`, `ndarray::Ix1`, etc.
     /// If the dimension is known only at runtime, you will get `ndarray::IxDyn`.
@@ -95,7 +95,7 @@ where
     /// If you want to access other versions, you can call `dim` or `shape`.
     fn raw_dim(&self) -> Self::Dim;
 
-    /// `shape` returns the dimension as `&[ndarray::Ix]`, aka `&[usize]`.
+    /// The dimension as `&[ndarray::Ix]`, aka `&[usize]`.
     ///
     /// No matter whether the dimension is known at compile-time or runtime, you will get `&[ndarray::Ix]`.
     ///
@@ -113,7 +113,7 @@ where
     fn shape(&self) -> &[Ix];
 }
 
-/// `Matrix<VT>` trait describes a matrix.
+/// Rust trait for a matrix.
 ///
 /// `VT` is the type of the values inside the matrix.
 ///
@@ -136,7 +136,7 @@ where
 {
 }
 
-/// `TensorIter<'a, VT, IT>` trait describes an iterator over a tensor.
+/// An iterator over a tensor.
 ///
 /// `'a` is the lifetime of the tensor from where the iterator is created.
 /// `VT` is the type of the values inside the tensor.
@@ -150,7 +150,7 @@ where
 {
 }
 
-/// `TensorIterMut<'a, VT, IT>` trait describes a mutable iterator over a tensor.
+/// A mutable iterator over a tensor.
 ///
 /// `'a` is the lifetime of the tensor from where the iterator is created.
 /// `VT` is the type of the values inside the tensor.
@@ -165,7 +165,7 @@ where
 {
 }
 
-/// `TensorIntoIter<'a, VT, IT>` trait describes a moved iterator over a tensor.
+/// A moved iterator over a tensor.
 ///
 /// `'a` is the lifetime of the tensor from where the iterator is created.
 /// `VT` is the type of the values inside the tensor.

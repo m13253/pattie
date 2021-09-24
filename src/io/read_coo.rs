@@ -1,3 +1,9 @@
+//! Read a tensor from a text file.
+//!
+//! The real documentation is at [`pattie::structs::tensor::COOTensor`].
+//!
+//! [`pattie::structs::tensor::COOTensor`]: ../../structs/tensor/struct.COOTensor.html#method.read_from_text
+
 use crate::structs::tensor;
 use crate::traits;
 use anyhow::{anyhow, bail, Result};
@@ -10,7 +16,7 @@ where
     VT: traits::ValType,
     IT: traits::IdxType,
 {
-    /// `read_from_text` reads a tensor from the text file.
+    /// Read a tensor from the text file.
     ///
     /// # Arguments
     ///

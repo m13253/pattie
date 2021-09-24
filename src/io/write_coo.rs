@@ -1,3 +1,9 @@
+//! Write a tensor to a text file.
+//!
+//! The real documentation is at [`pattie::structs::tensor::COOTensor`].
+//!
+//! [`pattie::structs::tensor::COOTensor`]: ../../structs/tensor/struct.COOTensor.html#method.write_to_text
+
 use crate::structs::tensor;
 use crate::traits::{self, Tensor};
 use anyhow::{anyhow, Result};
@@ -10,7 +16,7 @@ where
     VT: traits::ValType,
     IT: traits::IdxType,
 {
-    /// `write_to_text` writes the tensor to a text file.
+    /// Write the tensor to a text file.
     ///
     /// # Arguments
     ///

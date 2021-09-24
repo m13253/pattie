@@ -5,8 +5,6 @@ Rust 上车指南
 
 ## 下载工具链
 
----
-
 ### Linux、macOS、WSL
 
 1. 不需要使用 `apt`、`brew`、`dnf` 等工具提前安装任何软件
@@ -51,11 +49,9 @@ $ rustup update           # 更新日更版，每天都能更
 
 ## 编辑器支持
 
----
-
 ### Visual Studio Code
 
-不推荐那个名字叫 [Rust](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust) 的插件，推荐另一个叫 [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer) 的插件。
+**不推荐** 那个名字叫 [Rust](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust) 的插件，推荐另一个叫 [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer) 的插件。
 
 ### Sublime Text
 
@@ -67,8 +63,6 @@ $ rustup update           # 更新日更版，每天都能更
 
 ## 编译单个文件
 
----
-
 基本上用不到的技能。因为我们有 Cargo。
 
 ```bash
@@ -76,8 +70,6 @@ $ rustc -o output input.rs
 ```
 
 ## 使用 Cargo 管理软件包
-
----
 
 ```bash
 $ cargo new hello-world  # 如果文件夹提前建立好了，就不需要加名字
@@ -92,16 +84,12 @@ $ cargo run --release    # 编译并运行，打开优化
 
 ## 如何找库
 
----
-
 * 官方仓库：[https://crates.io](https://crates.io)
 * 非官方排行榜（搜索不太准）：[https://lib.rs](https://lib.rs)
 * LibHunt，有相似软件对比功能：[https://www.libhunt.com/l/rust](https://www.libhunt.com/l/rust)
 * Google、社区、论坛
 
 ## 如何读文档
-
----
 
 * DevDocs.io：[https://devdocs.io](https://devdocs.io)
     1. 点左上角搜索框旁边的菜单，选 Preferences
@@ -119,8 +107,6 @@ $ cargo run --release    # 编译并运行，打开优化
 
 ## 教程里没提到的小知识
 
----
-
 ### 函数式错误处理
 
 三种错误：
@@ -133,7 +119,7 @@ $ cargo run --release    # 编译并运行，打开优化
 
 1. 通过 `a.ok()` 或 `a.ok_or(error)` 在 `Result` 和 `Option` 之间转换。
 2. 通过 `a.expect(reason)` 转换成 `panic!`。
-3. 通过 `a?` 提取内容，若失败则 `return a`。
+3. 通过 `a?` 提取内容，若失败则自动 `return a`。
 4. 通过 `if let` 或 `match` 拆内容。
 
 实用工具库：
@@ -142,7 +128,7 @@ $ cargo run --release    # 编译并运行，打开优化
 
 ### 迭代器
 
-任何数据类型，只要实现 `[std::iter::Iterator](https://doc.rust-lang.org/std/iter/trait.Iterator.html)` 的 trait，就是迭代器。
+任何数据类型，只要满足 `[std::iter::Iterator](https://doc.rust-lang.org/std/iter/trait.Iterator.html)` 的 trait，就是迭代器。
 
 1. `iter()`, `iter_mut()`, `into_iter()`, …
 2. `map`, `reduce`, `collect::<Vec<_>>()`, `filter`, `flat_map`, `fold`, `for_each`, `take`, `zip`, …

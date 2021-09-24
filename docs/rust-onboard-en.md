@@ -79,7 +79,7 @@ $ rustc -o output input.rs
 
 ```bash
 $ cargo new hello-world  # You can omit the name if the folder is already made
-$ cd hello-world         # There is a "Hello world" program inside
+$ cd hello-world         # There is a “Hello world” program inside
 $ cargo build            # Build without optimization
 $ cargo run              # Build then run, without optimization
 $ cargo build --release  # Build with optimization

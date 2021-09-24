@@ -128,7 +128,7 @@ $ cargo run --release    # 编译并运行，打开优化
 
 ### 迭代器
 
-任何数据类型，只要满足 `[std::iter::Iterator](https://doc.rust-lang.org/std/iter/trait.Iterator.html)` 的 trait，就是迭代器。
+任何数据类型，只要满足 [`std::iter::Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html) 的 trait，就是迭代器。
 
 1. `iter()`, `iter_mut()`, `into_iter()`, …
 2. `map`, `reduce`, `collect::<Vec<_>>()`, `filter`, `flat_map`, `fold`, `for_each`, `take`, `zip`, …

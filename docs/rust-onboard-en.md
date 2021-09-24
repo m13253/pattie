@@ -128,7 +128,7 @@ Utility libraries:
 
 ### Iterators
 
-Any data structure, as long as it satisfies the `[std::iter::Iterator](https://doc.rust-lang.org/std/iter/trait.Iterator.html)` trait, can be iterated.
+Any data structure, as long as it satisfies the [`std::iter::Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html) trait, can be iterated.
 
 1. `iter()`, `iter_mut()`, `into_iter()`, …
 2. `map`, `reduce`, `collect::<Vec<_>>()`, `filter`, `flat_map`, `fold`, `for_each`, `take`, `zip`, …

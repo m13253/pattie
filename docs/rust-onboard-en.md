@@ -111,6 +111,8 @@ Built binaries are stored in the `./target` folder. Additionally, `cargo new` co
 
     The built documentation is located at `./target/doc/[crate name]/index.html`。
 
+    Exercise: Try to build the documentation of this software library.
+
 ## Some tutorials
 
 * https://doc.rust-lang.org/book/

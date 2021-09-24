@@ -1,7 +1,7 @@
 Rust Onboard
 ------------
 
-Some details not covered in most tutorials.
+This document is mostly some details not covered in tutorials.
 
 ## Downloading the toolchain
 

@@ -105,6 +105,11 @@ $ cargo run --release    # 编译并运行，打开优化
 
     编译好的文档会出现在 `./target/doc/包名/index.html`。
 
+## 新人指南
+
+* https://rustcc.cn/article?id=eadc0bef-ee1e-44f0-b3f6-7f5a0cdb78cc
+* https://kaisery.github.io/trpl-zh-cn/
+
 ## 教程里没提到的小知识
 
 ### 函数式错误处理

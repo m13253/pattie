@@ -138,7 +138,7 @@ where
 
 /// An iterator over a tensor.
 ///
-/// `'a` is the lifetime of the tensor from where the iterator is created.
+/// `'a` is the lifetime of the tensor from which the iterator is created.
 /// `VT` is the type of the values inside the tensor.
 /// `IT` is the type of the indices of the tensor.
 ///
@@ -152,7 +152,7 @@ where
 
 /// A mutable iterator over a tensor.
 ///
-/// `'a` is the lifetime of the tensor from where the iterator is created.
+/// `'a` is the lifetime of the tensor from which the iterator is created.
 /// `VT` is the type of the values inside the tensor.
 /// `IT` is the type of the indices of the tensor.
 ///
@@ -167,7 +167,7 @@ where
 
 /// A moved iterator over a tensor.
 ///
-/// `'a` is the lifetime of the tensor from where the iterator is created.
+/// `'a` is the lifetime of the tensor from which the iterator is created.
 /// `VT` is the type of the values inside the tensor.
 /// `IT` is the type of the indices of the tensor.
 ///

@@ -2,17 +2,35 @@ use crate::structs::tensor;
 use crate::traits::{IdxType, Tensor, ValType};
 use ndarray::{Array1, Array2, ArrayView1, Axis};
 
+/// `SortCOOTensor` is a task builder to sort the storage order of elements inside a `COOTensor`.
 pub struct SortCOOTensor {
     order: Array1<Axis>,
 }
 
 impl SortCOOTensor {
+    /// `new` creates a new `SortCOOTensor` task builder.
+    /// Use `with_order` or `with_last_order` to specify the order of axis to sort tensors into.
+    /// After configuring the task builder, use `execute` to perform the sort.
     pub fn new() -> Self {
         Self {
             order: Array1::from_elem(0, Axis(0)),
         }
     }
 
+    /// `with_order` specifies the order of axis to sort tensors into.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray::{ArrayView1, Axis};
+    /// use pattie::structs::tensor::COOTensor;
+    /// use pattie::algos::tensor::SortCOOTensor;
+    ///
+    /// let mut tensor = COOTensor::<f32, usize>::zeros(vec![3, 2, 3, 4]);
+    /// let task = SortCOOTensor::new().with_order(ArrayView1::from(&[
+    ///     Axis(0), Axis(2), Axis(3), Axis(1),
+    /// ]));
+    /// task.execute(&mut tensor);
+    /// ```
     pub fn with_order(mut self, order: ArrayView1<Axis>) -> Self {
         self.order = order.to_owned();
         for i in 0..order.len() {
@@ -21,12 +39,25 @@ impl SortCOOTensor {
         self
     }
 
-    pub fn with_last_order(mut self, ndim: usize, last_order: Axis) -> Self {
-        assert!(last_order.index() < ndim);
+    /// `with_last_order` is a shortcut to `with_order` to put `last_axis` at the end, while keeping other axes in increasing order.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray::{ArrayView1, Axis};
+    /// use pattie::algos::tensor::SortCOOTensor;
+    ///
+    /// let task1 = SortCOOTensor::new().with_last_order(5, Axis(2));
+    /// let task2 = SortCOOTensor::new().with_order(ArrayView1::from(&[
+    ///     Axis(0), Axis(2), Axis(3), Axis(4), Axis(2),
+    /// ]));
+    /// // task1 is equivalent to task2.
+    /// ```
+    pub fn with_last_order(mut self, ndim: usize, last_axis: Axis) -> Self {
+        assert!(last_axis.index() < ndim);
         self.order = Array1::from_iter((0..ndim).map(|i| {
             if i + 1 == ndim {
-                last_order
-            } else if i < last_order.index() {
+                last_axis
+            } else if i < last_axis.index() {
                 Axis(i)
             } else {
                 Axis(i + 1)
@@ -35,6 +66,20 @@ impl SortCOOTensor {
         self
     }
 
+    /// `execute` performs the sort.
+    ///
+    /// The sort operation uses quick-sort algorithm, but may change in future versions.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray::{ArrayView1, Axis};
+    /// use pattie::structs::tensor::COOTensor;
+    /// use pattie::algos::tensor::SortCOOTensor;
+    ///
+    /// let mut tensor = COOTensor::<f32, usize>::zeros(vec![3, 2, 3, 4]);
+    /// let task = SortCOOTensor::new().with_last_order(4, Axis(2));
+    /// task.execute(&mut tensor);
+    /// ```
     pub fn execute<VT, IT>(&self, tensor: &mut tensor::COOTensor<VT, IT>)
     where
         VT: ValType,

@@ -100,10 +100,6 @@ where
 {
     type Dim = IxDyn;
 
-    fn ndim(&self) -> usize {
-        self.dim.size()
-    }
-
     fn num_non_zeros(&self) -> usize {
         debug_assert_eq!(self.indices.nrows(), self.values.len());
         self.values.len()

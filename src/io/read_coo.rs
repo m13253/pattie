@@ -10,6 +10,31 @@ where
     VT: traits::ValType,
     IT: traits::IdxType,
 {
+    /// `read_from_text` reads a tensor from the text file.
+    ///
+    /// # Arguments
+    ///
+    /// * `r` - A `std::io::Read` object. Examples are `std::fs::File`, `std::io::stdin()`, `Vec<u8>`.
+    /// * `index_offset` - An offset to be added to the index. All indices in this library are zero-based, however, some MATLAB or Fortran programs provide one-based indices. Put an offset of 1 if you want to use one-based indices.
+    ///
+    /// # Example input
+    ///
+    /// ```text
+    /// 3
+    /// 3 2 3
+    /// 0       0       0       1.000000e+00
+    /// 0       0       1       2.000000e+00
+    /// 0       1       0       3.000000e+00
+    /// 0       1       2       4.000000e+00
+    /// 1       0       2       5.000000e+00
+    /// 1       1       0       6.000000e+00
+    /// 2       0       1       7.000000e+00
+    /// 2       1       1       8.000000e+00
+    /// ```
+    ///
+    /// First line is the number of dimensions.
+    /// Second line is the shape of the tensor.
+    /// The following lines are the elements of the tensor.
     pub fn read_from_text<R>(r: &mut R, index_offset: usize) -> Result<tensor::COOTensor<VT, IT>>
     where
         R: io::Read,

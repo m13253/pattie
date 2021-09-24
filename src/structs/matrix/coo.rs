@@ -19,10 +19,6 @@ where
 {
     type Dim = Ix2;
 
-    fn ndim(&self) -> usize {
-        2
-    }
-
     fn num_non_zeros(&self) -> usize {
         debug_assert_eq!(self.indices.len(), self.values.len());
         self.values.len()

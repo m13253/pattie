@@ -30,10 +30,6 @@ where
 {
     type Dim = Ix2;
 
-    fn ndim(&self) -> usize {
-        2
-    }
-
     fn num_non_zeros(&self) -> usize {
         self.data.raw_dim().size_checked().unwrap()
     }

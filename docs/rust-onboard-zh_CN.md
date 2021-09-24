@@ -53,6 +53,12 @@ $ rustup update           # 更新日更版，每天都能更
 
 **不推荐** 那个名字叫 [Rust](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust) 的插件，推荐另一个叫 [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer) 的插件。
 
+如何在 VS Code 中切换稳定版与日更版：
+
+1. 按 Ctrl+逗号 或 Command+逗号
+2. 搜索 “Rust channel”
+3. 选择 “stable” 或 “nightly”
+
 ### Sublime Text
 
 推荐 [Rust Enhanced](https://github.com/rust-lang/rust-enhanced) 插件，但我不知道是否比 VS Code 的这个好用。

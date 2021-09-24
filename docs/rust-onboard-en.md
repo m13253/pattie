@@ -53,6 +53,12 @@ $ rustup update           # Update the nightly version, available every day
 
 The extension named [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer) **rather than** [Rust](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust) is recommended.
 
+How to switch between stable and nightly versions in VS Code:
+
+1. Press Ctrl+Comma or Command+Comma
+2. Search for “Rust channel”
+3. Select “stable” or “nightly”
+
 ### Sublime Text
 
 [Rust Enhanced](https://github.com/rust-lang/rust-enhanced) is recommended. But I am not sure whether it is as helpful as VS Code.

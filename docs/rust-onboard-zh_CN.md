@@ -55,7 +55,7 @@ $ rustup update           # 更新日更版，每天都能更
 
 如何在 VS Code 中切换稳定版与日更版：
 
-1. 按 Ctrl+逗号 或 Command+逗号
+1. 按 `Ctrl+逗号` 或 `Command+逗号`
 2. 搜索 “Rust channel”
 3. 选择 “stable” 或 “nightly”
 

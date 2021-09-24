@@ -55,7 +55,7 @@ The extension named [rust-analyzer](https://marketplace.visualstudio.com/items?i
 
 How to switch between stable and nightly versions in VS Code:
 
-1. Press Ctrl+Comma or Command+Comma
+1. Press `Ctrl+Comma` or `Command+Comma`
 2. Search for “Rust channel”
 3. Select “stable” or “nightly”
 

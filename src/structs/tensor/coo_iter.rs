@@ -2,6 +2,7 @@ use crate::traits::{IdxType, TensorIter, ValType};
 use ndarray::iter::{Iter, LanesIter};
 use ndarray::Ix1;
 
+/// Iterator for `COOTensor`.
 pub struct COOIter<'a, VT, IT>
 where
     VT: 'a + ValType,

@@ -2,6 +2,7 @@ use crate::traits::{IdxType, TensorIterMut, ValType};
 use ndarray::iter::{IterMut, LanesIter};
 use ndarray::Ix1;
 
+/// Iterator for `COOTensorMut`.
 pub struct COOIterMut<'a, VT, IT>
 where
     VT: 'a + ValType,

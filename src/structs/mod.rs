@@ -1,4 +1,4 @@
 //! Data structures.
 
-pub mod matrix;
+pub mod axis;
 pub mod tensor;

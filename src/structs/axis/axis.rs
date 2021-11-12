@@ -2,26 +2,16 @@ use super::AxisBuilder;
 use crate::traits::IdxType;
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomPinned;
 use std::ops::Range;
-use std::sync::Arc;
 
-#[derive(Clone)]
-pub struct Axis<IT = isize>
+#[derive(Clone, Debug)]
+pub struct Axis<IT>
 where
     IT: IdxType,
 {
-    pub(super) inner: Arc<AxisInner<IT>>,
-}
-
-#[derive(Clone)]
-pub(super) struct AxisInner<IT>
-where
-    IT: IdxType,
-{
+    pub(super) id: i64,
     pub(super) label: Option<String>,
     pub(super) range: Range<IT>,
-    pub(super) pin: PhantomPinned,
 }
 
 impl<IT> Axis<IT>
@@ -38,7 +28,7 @@ where
     /// assert_eq!(axis.label(), Some("x"));
     /// ```
     pub fn label(&self) -> Option<&str> {
-        self.inner.label.as_deref()
+        self.label.as_deref()
     }
 
     /// Returns the range of the axis.
@@ -50,7 +40,7 @@ where
     /// assert_eq!(axis.range(), 0..10);
     /// ```
     pub fn range(&self) -> Range<IT> {
-        self.inner.range.clone()
+        self.range.clone()
     }
 
     /// Returns whether the upper bound is not greater than the lower bound.
@@ -62,7 +52,7 @@ where
     /// assert!(axis.is_empty());
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.inner.range.is_empty()
+        self.range.is_empty()
     }
 
     /// Returns the lower bound (inclusive) of the axis.
@@ -74,7 +64,7 @@ where
     /// assert_eq!(axis.lower(), 0);
     /// ```
     pub fn lower(&self) -> IT {
-        self.inner.range.start.clone()
+        self.range.start.clone()
     }
 
     /// Returns the upper bound (exclusive) of the axis.
@@ -86,21 +76,21 @@ where
     /// assert_eq!(axis.upper(), 10);
     /// ```
     pub fn upper(&self) -> IT {
-        self.inner.range.end.clone()
+        self.range.end.clone()
     }
 
-    /// Returns the length of the axis.
+    /// Returns the size of the axis.
     /// If the upper bound is not greater than the lower bound, `0` is returned.
     ///
     /// ```
     /// use pattie::structs::axis::AxisBuilder;
     ///
     /// let axis = AxisBuilder::new().range(0..10).build();
-    /// assert_eq!(axis.len(), 10);
+    /// assert_eq!(axis.size(), 10);
     /// ```
-    pub fn len(&self) -> IT {
-        if self.inner.range.start < self.inner.range.end {
-            self.inner.range.end.clone() - self.inner.range.start.clone()
+    pub fn size(&self) -> IT {
+        if self.range.start < self.range.end {
+            self.range.end.clone() - self.range.start.clone()
         } else {
             IT::zero()
         }
@@ -145,10 +135,10 @@ where
     /// assert_eq!(new_axis.range(), 0..30);
     /// ```
     pub fn extend(&self, other: &Self) -> Self {
-        let self_start = self.inner.range.start.clone();
-        let self_end = self.inner.range.end.clone();
-        let other_start = other.inner.range.start.clone();
-        let other_end = other.inner.range.end.clone();
+        let self_start = self.range.start.clone();
+        let self_end = self.range.end.clone();
+        let other_start = other.range.start.clone();
+        let other_end = other.range.end.clone();
         AxisBuilder::new()
             .range(self_start.min(other_start)..self_end.max(other_end.clone()))
             .build()
@@ -165,10 +155,10 @@ where
     /// assert_eq!(new_axis.range(), 0..30);
     /// ```
     pub fn extend_with_label<'a>(&'a self, other: &Self, label: impl Into<Cow<'a, str>>) -> Self {
-        let self_start = self.inner.range.start.clone();
-        let self_end = self.inner.range.end.clone();
-        let other_start = other.inner.range.start.clone();
-        let other_end = other.inner.range.end.clone();
+        let self_start = self.range.start.clone();
+        let self_end = self.range.end.clone();
+        let other_start = other.range.start.clone();
+        let other_end = other.range.end.clone();
         AxisBuilder::new()
             .label(label)
             .range(self_start.min(other_start.clone())..self_end.clone().max(other_end.clone()))
@@ -190,10 +180,10 @@ where
     /// assert!(new_axis.is_empty());
     /// ```
     pub fn intersect(&self, other: &Self) -> Self {
-        let self_start = self.inner.range.start.clone();
-        let self_end = self.inner.range.end.clone();
-        let other_start = other.inner.range.start.clone();
-        let other_end = other.inner.range.end.clone();
+        let self_start = self.range.start.clone();
+        let self_end = self.range.end.clone();
+        let other_start = other.range.start.clone();
+        let other_end = other.range.end.clone();
         AxisBuilder::new()
             .range(self_start.max(other_start)..self_end.min(other_end))
             .build()
@@ -218,10 +208,10 @@ where
         other: &Self,
         label: impl Into<Cow<'a, str>>,
     ) -> Self {
-        let self_start = self.inner.range.start.clone();
-        let self_end = self.inner.range.end.clone();
-        let other_start = other.inner.range.start.clone();
-        let other_end = other.inner.range.end.clone();
+        let self_start = self.range.start.clone();
+        let self_end = self.range.end.clone();
+        let other_start = other.range.start.clone();
+        let other_end = other.range.end.clone();
         AxisBuilder::new()
             .label(label)
             .range(self_start.max(other_start)..self_end.min(other_end))
@@ -241,7 +231,7 @@ where
     /// This is to ensure axes across different tensors are tracked correctly.
     /// If you want to associate two axes into one, use [`Axis::extend`] or [`Axis::intersect`].
     fn eq(&self, other: &Self) -> bool {
-        Arc::as_ptr(&self.inner) == Arc::as_ptr(&other.inner)
+        self.id == other.id
     }
 }
 
@@ -252,7 +242,7 @@ where
     IT: IdxType,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        Arc::as_ptr(&self.inner).hash(state);
+        self.id.hash(state);
     }
 }
 

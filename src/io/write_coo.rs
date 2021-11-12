@@ -11,10 +11,10 @@ use num::NumCast;
 use std::fmt::LowerExp;
 use std::io::{self, Write};
 
-impl<VT, IT> tensor::COOTensor<VT, IT>
+impl<IT, VT> tensor::COOTensor<IT, VT>
 where
-    VT: traits::ValType,
     IT: traits::IdxType,
+    VT: traits::ValType,
 {
     /// Write the tensor to a text file.
     ///
@@ -44,18 +44,18 @@ where
     pub fn write_to_text<W>(&self, w: &mut W, index_offset: usize) -> Result<()>
     where
         W: io::Write,
-        VT: LowerExp,
+        VT: LowerExp, // https://github.com/rust-lang/rust/issues/31844
     {
         let mut buf_writer = io::BufWriter::new(w);
 
         writeln!(buf_writer, "{}", self.ndim())?;
 
-        let mut dim_iter = self.shape().into_iter();
-        if let Some(dim) = dim_iter.next() {
-            write!(buf_writer, "{}", dim)?;
+        let mut shape_iter = self.shape().into_iter();
+        if let Some(axis) = shape_iter.next() {
+            write!(buf_writer, "{}", axis.size())?;
         }
-        for dim in dim_iter {
-            write!(buf_writer, " {}", dim)?;
+        for axis in shape_iter {
+            write!(buf_writer, " {}", axis.size())?;
         }
         writeln!(buf_writer)?;
 
@@ -69,9 +69,6 @@ where
                         .ok_or(anyhow!("index value overflow"))?
                 )?;
             }
-            // Once specialization is available, we can remove the LowerExp requirement.
-            // This macro ensures the compilation will fail after that day, so we can come back and change the code to use specialization.
-            todo_or_die::issue_closed!("rust-lang", "rust", 31844);
             writeln!(buf_writer, "{:.6e}", value)?;
         }
 

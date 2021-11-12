@@ -1,12 +1,11 @@
-use super::axis::{Axis, AxisInner};
+use super::axis::Axis;
 use crate::traits::IdxType;
 use std::borrow::Cow;
-use std::marker::PhantomPinned;
 use std::ops::Range;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicI64, Ordering};
 
 /// A builder for [`Axis`].
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AxisBuilder<'a, IT = isize>
 where
     IT: IdxType,
@@ -14,6 +13,8 @@ where
     label: Option<Cow<'a, str>>,
     range: Option<Range<IT>>,
 }
+
+static mut COUNTER: AtomicI64 = AtomicI64::new(0);
 
 impl<'a, IT> AxisBuilder<'a, IT>
 where
@@ -68,11 +69,9 @@ where
     /// ```
     pub fn build(self) -> Axis<IT> {
         Axis {
-            inner: Arc::new(AxisInner {
-                label: self.label.map(Cow::into_owned),
-                range: self.range.expect("range not set"),
-                pin: PhantomPinned,
-            }),
+            id: unsafe { COUNTER.fetch_add(1, Ordering::Relaxed) },
+            label: self.label.map(Cow::into_owned),
+            range: self.range.expect("range not set"),
         }
     }
 }

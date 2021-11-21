@@ -99,6 +99,20 @@ where
         IT: FromStr,
         VT: FromStr,
     {
+        Self::read_from_text_with_parser(r, |value| value.parse::<VT>().ok())
+    }
+
+    /// Similar to [`write_to_text`], but with a custom parser for values.
+    pub fn read_from_text_with_parser<R, P>(
+        r: &mut R,
+        parser: P,
+    ) -> Result<tensor::COOTensor<IT, VT>, TensorReadError>
+    where
+        R: io::Read,
+        P: FnMut(&str) -> Option<VT>,
+        IT: FromStr,
+    {
+        let mut parser = parser;
         let mut r = LineNumberReader::new(io::BufReader::new(r));
 
         let ndim = {
@@ -313,13 +327,11 @@ where
                     },
                 )?;
                 if let Token::Value(value) = token {
-                    value
-                        .parse::<VT>()
-                        .map_err(|_| TensorReadError::ValueError {
-                            line,
-                            column,
-                            value: value.into(),
-                        })
+                    parser(&value).ok_or_else(|| TensorReadError::ValueError {
+                        line,
+                        column,
+                        value: value.into(),
+                    })
                 } else {
                     unreachable!();
                 }

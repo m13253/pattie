@@ -55,37 +55,37 @@ where
         F: FnMut(&VT) -> String,
     {
         let mut formatter = formatter;
-        let mut buf_writer = io::BufWriter::new(w);
+        let mut w = io::BufWriter::new(w);
 
-        writeln!(buf_writer, "{}", self.ndim())?;
+        writeln!(w, "{}", self.ndim())?;
         if self.ndim() == 0 {
             return Ok(());
         }
 
         let mut shape_iter = self.shape().into_iter();
         if let Some(axis) = shape_iter.next() {
-            write!(buf_writer, "{}", axis.lower())?;
+            write!(w, "{}", axis.lower())?;
         }
         for axis in shape_iter {
-            write!(buf_writer, " {}", axis.lower())?;
+            write!(w, " {}", axis.lower())?;
         }
-        writeln!(buf_writer)?;
+        writeln!(w)?;
 
         let mut shape_iter = self.shape().into_iter();
         if let Some(axis) = shape_iter.next() {
-            write!(buf_writer, "{}", axis.upper())?;
+            write!(w, "{}", axis.upper())?;
         }
         for axis in shape_iter {
-            write!(buf_writer, " {}", axis.upper())?;
+            write!(w, " {}", axis.upper())?;
         }
-        writeln!(buf_writer)?;
+        writeln!(w)?;
 
         for (index, value) in self.iter() {
             for index in index.iter() {
-                write!(buf_writer, "{}\t", index)?;
+                write!(w, "{}\t", index)?;
             }
-            write!(buf_writer, "{}", formatter(value))?;
-            writeln!(buf_writer)?;
+            write!(w, "{}", formatter(value))?;
+            writeln!(w)?;
         }
 
         Ok(())

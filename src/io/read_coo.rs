@@ -73,7 +73,6 @@ where
     /// # Arguments
     ///
     /// * `r` - A `std::io::Read` object. Examples are `std::fs::File`, `std::io::stdin()`, `Vec<u8>`.
-    /// * `axis_lower` - An offset to be added to the index. All indices in this library are zero-based, however, some MATLAB or Fortran programs provide one-based indices. Put an offset of 1 if you want to use one-based indices.
     ///
     /// # Example input
     ///
@@ -117,6 +116,7 @@ where
         let mut parser = parser;
         let mut r = LineNumberReader::new(io::BufReader::new(r));
 
+        // First line: number of axes
         let ndim = {
             let (line, column) = r.line_column();
             let token = read_until_token(
@@ -147,6 +147,7 @@ where
             }
         };
 
+        // Read until EOL (or EOF if ndim == 0)
         let mut eof = is_token_eof(&read_until_token(
             &mut r,
             TokenMask {
@@ -163,6 +164,7 @@ where
             },
         )?);
 
+        // Second line: lower bound of each axis (inclusive)
         let lower_bound = (0..ndim)
             .map(|dim| {
                 let (line, column) = r.line_column();
@@ -195,6 +197,7 @@ where
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        // Read until EOL
         eof = eof
             || is_token_eof(&read_until_token(
                 &mut r,
@@ -212,6 +215,7 @@ where
                 },
             )?);
 
+        // Third line: upper bound of each axis (exclusive)
         let upper_bound = (0..ndim)
             .map(|dim| {
                 let (line, column) = r.line_column();
@@ -244,6 +248,7 @@ where
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        // Read until EOL
         eof = eof
             || is_token_eof(&read_until_token(
                 &mut r,
@@ -261,6 +266,7 @@ where
                 },
             )?);
 
+        // Create the tensor
         let shape = lower_bound
             .into_iter()
             .zip(upper_bound.into_iter())
@@ -268,7 +274,9 @@ where
             .collect::<Vec<_>>();
         let mut tensor = COOTensor::zeros(&shape, &vec![false; ndim]);
 
+        // For each line, until EOF
         while !eof {
+            // Index
             let index = shape
                 .iter()
                 .enumerate()
@@ -277,6 +285,7 @@ where
                         return Ok(IT::zero());
                     }
                     let (line, column) = r.line_column();
+                    // EOF may be reached if dim == 0
                     let token = read_until_token(
                         &mut r,
                         TokenMask {
@@ -316,6 +325,8 @@ where
                     }
                 })
                 .collect::<Result<Vec<_>, _>>()?;
+
+            // If we reach an EOF, the whole `index` vector is guaranteed to be full-zero
             if eof {
                 break;
             }

@@ -2,6 +2,7 @@ use super::COOTensor;
 use crate::traits::{IdxType, Tensor, TensorIter, ValType};
 use ndarray::{iter, Ix1};
 use smallvec::{smallvec, SmallVec};
+use std::marker::PhantomPinned;
 use std::slice;
 
 /// Iterator for [`COOTensor`].
@@ -23,6 +24,8 @@ where
     indices_iter: iter::LanesIter<'a, IT, Ix1>,
     values_block_iter: iter::LanesIter<'a, VT, Ix1>,
     values_iter: Option<iter::Iter<'a, VT, Ix1>>,
+    // Prevent moving
+    _pin: PhantomPinned,
 }
 
 impl<'a, IT, VT> COOIter<'a, IT, VT>
@@ -61,6 +64,7 @@ where
             indices_iter: indices.rows().into_iter(),
             values_block_iter: values.rows().into_iter(),
             values_iter: None,
+            _pin: PhantomPinned,
         }
     }
 
@@ -132,6 +136,13 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.size_hint, Some(self.size_hint))
     }
+
+    fn collect<B>(self) -> B
+    where
+        B: FromIterator<Self::Item>,
+    {
+        panic!("collect is not implemented for COOIter")
+    }
 }
 
 impl<'a, IT, VT> ExactSizeIterator for COOIter<'a, IT, VT>
@@ -141,5 +152,15 @@ where
 {
     fn len(&self) -> usize {
         self.size_hint
+    }
+}
+
+impl<'a, IT, VT> Drop for COOIter<'a, IT, VT>
+where
+    VT: 'a + ValType,
+    IT: 'a + IdxType,
+{
+    fn drop(&mut self) {
+        self.index.fill(IT::zero());
     }
 }

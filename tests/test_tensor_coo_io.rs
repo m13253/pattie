@@ -13,11 +13,11 @@ fn test_tensor_coo_io() {
         "4d_3_16.tns",
     ];
 
-    // for &tensor_file in TENSORS.iter() {
-    //     let mut f = File::open(Path::new("data/tensors").join(tensor_file)).unwrap();
-    //     let tensor = tensor::COOTensor::<f32, u32>::read_from_text(&mut f, 1).unwrap();
-    //     let mut output_buffer = Vec::new();
-    //     tensor.write_to_text(&mut output_buffer, 1).unwrap();
-    //     print!("{}", String::from_utf8_lossy(&output_buffer));
-    // }
+    for &tensor_file in TENSORS.iter() {
+        let mut f = File::open(Path::new("data/tensors").join(tensor_file)).unwrap();
+        let tensor = tensor::COOTensor::<u32, f32>::read_from_text(&mut f).unwrap();
+        let mut output_buffer = Vec::new();
+        tensor.write_to_text(&mut output_buffer).unwrap();
+        print!("{}", String::from_utf8_lossy(&output_buffer));
+    }
 }

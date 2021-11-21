@@ -39,6 +39,8 @@ pub enum TensorReadError {
         column: u64,
         source: FromUtf8Error,
     },
+    #[error("line {line}, column {column}: index out of bound")]
+    IndexOutOfBoundError { line: u64, column: u64 },
     #[error("line {line}, column {column}: {source}")]
     IOError {
         line: u64,
@@ -162,7 +164,7 @@ where
         )?);
 
         let lower_bound = (0..ndim)
-            .map(|axis| {
+            .map(|dim| {
                 let (line, column) = r.line_column();
                 let token = read_until_token(
                     &mut r,
@@ -174,7 +176,7 @@ where
                     },
                     TokenMask {
                         eof: false,
-                        new_line: axis == 0,
+                        new_line: dim == 0,
                         comment: true, // !
                         value: false,
                     },
@@ -211,7 +213,7 @@ where
             )?);
 
         let upper_bound = (0..ndim)
-            .map(|axis| {
+            .map(|dim| {
                 let (line, column) = r.line_column();
                 let token = read_until_token(
                     &mut r,
@@ -223,7 +225,7 @@ where
                     },
                     TokenMask {
                         eof: false,
-                        new_line: axis == 0,
+                        new_line: dim == 0,
                         comment: true, // !
                         value: true,
                     },
@@ -267,44 +269,53 @@ where
         let mut tensor = COOTensor::zeros(&shape, &vec![false; ndim]);
 
         while !eof {
-            let index =
-                (0..ndim)
-                    .map(|axis| {
-                        if eof {
-                            return Ok(IT::zero());
-                        }
-                        let (line, column) = r.line_column();
-                        let token = read_until_token(
-                            &mut r,
-                            TokenMask {
-                                eof: axis == 0,
-                                new_line: false,
-                                comment: false,
-                                value: true,
-                            },
-                            TokenMask {
-                                eof: false,
-                                new_line: axis == 0,
-                                comment: true,
-                                value: false,
-                            },
-                        )?;
-                        match token {
-                            Token::Value(value) => Ok(value.parse::<IT>().map_err(|_| {
-                                TensorReadError::ValueError {
-                                    line,
-                                    column,
-                                    value: value.into(),
-                                }
-                            })?),
-                            Token::EOF => {
-                                eof = true;
-                                Ok(IT::zero())
+            let index = shape
+                .iter()
+                .enumerate()
+                .map(|(dim, axis)| {
+                    if eof {
+                        return Ok(IT::zero());
+                    }
+                    let (line, column) = r.line_column();
+                    let token = read_until_token(
+                        &mut r,
+                        TokenMask {
+                            eof: dim == 0,
+                            new_line: false,
+                            comment: false,
+                            value: true,
+                        },
+                        TokenMask {
+                            eof: false,
+                            new_line: dim == 0,
+                            comment: true,
+                            value: false,
+                        },
+                    )?;
+                    match token {
+                        Token::Value(value) => {
+                            let idx =
+                                value
+                                    .parse::<IT>()
+                                    .map_err(|_| TensorReadError::ValueError {
+                                        line,
+                                        column,
+                                        value: value.into(),
+                                    })?;
+                            if axis.range().contains(&idx) {
+                                Ok(idx)
+                            } else {
+                                Err(TensorReadError::IndexOutOfBoundError { line, column })
                             }
-                            _ => unreachable!(),
                         }
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
+                        Token::EOF => {
+                            eof = true;
+                            Ok(IT::zero())
+                        }
+                        _ => unreachable!(),
+                    }
+                })
+                .collect::<Result<Vec<_>, _>>()?;
             if eof {
                 break;
             }

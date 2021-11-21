@@ -253,7 +253,7 @@ where
         let mut tensor = COOTensor::zeros(&shape, &vec![false; ndim]);
 
         while !eof {
-            let indices =
+            let index =
                 (0..ndim)
                     .map(|axis| {
                         if eof {
@@ -325,7 +325,7 @@ where
                 }
             }?;
 
-            tensor.push_block(&indices, &[value]);
+            tensor.push_block(&index, &[value]);
         }
 
         Ok(tensor)

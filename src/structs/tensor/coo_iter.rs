@@ -12,9 +12,9 @@ where
 {
     tensor: &'a COOTensor<IT, VT>,
     // Extracted from indices_iter.
-    sparse_index: SmallVec<[IT; 4]>,
+    sparse_index: Vec<IT>,
     // Incrementing dense index.
-    dense_index: SmallVec<[IT; 4]>,
+    dense_index: Vec<IT>,
     // `sparse_index` and `dense_index` combined.
     index: SmallVec<[IT; 4]>,
     // The map from `index` to `sparse_index` and `dense_matrix`.
@@ -31,8 +31,8 @@ where
     VT: 'a + ValType,
 {
     pub(super) fn new(tensor: &'a COOTensor<IT, VT>) -> Self {
-        let sparse_index = smallvec![IT::zero(); tensor.sparse_axes().len()];
-        let dense_index = smallvec![IT::zero(); tensor.dense_storage_order().len()];
+        let sparse_index = vec![IT::zero(); tensor.sparse_axes().len()];
+        let dense_index = vec![IT::zero(); tensor.dense_storage_order().len()];
         let index = smallvec![IT::zero(); tensor.ndim()];
         let index_map = tensor
             .shape()

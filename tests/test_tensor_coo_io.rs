@@ -4,6 +4,7 @@ use anyhow::Result;
 use pattie::structs::tensor;
 use std::fs::File;
 use std::path::Path;
+use std::str;
 
 fn load_then_store_tensor(filename: &Path) -> Result<()> {
     let mut input_file = File::open(filename)?;
@@ -11,7 +12,7 @@ fn load_then_store_tensor(filename: &Path) -> Result<()> {
     drop(input_file);
     let mut output_buffer = Vec::new();
     tensor.write_to_text(&mut output_buffer)?;
-    print!("{}", String::from_utf8(output_buffer)?);
+    print!("{}", str::from_utf8(&output_buffer)?);
     drop(output_buffer);
     Ok(())
 }

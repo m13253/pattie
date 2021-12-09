@@ -20,8 +20,8 @@ fn load_then_store_tensor(filename: &Path) -> Result<()> {
 macro_rules! test_tensor_io {
     ($name:ident, $filename:expr) => {
         #[test]
-        fn $name() -> Result<()> {
-            load_then_store_tensor(Path::new($filename))
+        fn $name() {
+            load_then_store_tensor(Path::new($filename)).unwrap();
         }
     };
 }

@@ -1,23 +1,32 @@
+#![cfg(test)]
+
+use anyhow::Result;
 use pattie::structs::tensor;
 use std::fs::File;
 use std::path::Path;
 
-#[test]
-fn test_tensor_coo_io() {
-    const TENSORS: [&str; 6] = [
-        "3d_7.tns",
-        "3d_8.tns",
-        "3D_12031.tns",
-        "3d_dense.tns",
-        "3d-24.tns",
-        "4d_3_16.tns",
-    ];
-
-    for &tensor_file in TENSORS.iter() {
-        let mut f = File::open(Path::new("data/tensors").join(tensor_file)).unwrap();
-        let tensor = tensor::COOTensor::<u32, f32>::read_from_text(&mut f).unwrap();
-        let mut output_buffer = Vec::new();
-        tensor.write_to_text(&mut output_buffer).unwrap();
-        print!("{}", String::from_utf8_lossy(&output_buffer));
-    }
+fn load_then_store_tensor(filename: &Path) -> Result<()> {
+    let mut input_file = File::open(Path::new("data/tensors").join(filename))?;
+    let tensor = tensor::COOTensor::<u32, f32>::read_from_text(&mut input_file)?;
+    drop(input_file);
+    let mut output_buffer = Vec::new();
+    tensor.write_to_text(&mut output_buffer)?;
+    print!("{}", String::from_utf8(output_buffer)?);
+    Ok(())
 }
+
+macro_rules! test_tensor_io {
+    ($name:ident, $filename:expr) => {
+        #[test]
+        fn $name() -> Result<()> {
+            load_then_store_tensor(Path::new($filename))
+        }
+    };
+}
+
+test_tensor_io!(test_load_3d_7, "3d_7.tns");
+test_tensor_io!(test_load_3d_8, "3d_8.tns");
+test_tensor_io!(test_load_3d_12031, "3D_12031.tns");
+test_tensor_io!(test_load_3d_dense, "3d_dense.tns");
+test_tensor_io!(test_load_3d_24, "3d-24.tns");
+test_tensor_io!(test_load_4d_3_16, "4d_3_16.tns");

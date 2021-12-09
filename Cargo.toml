@@ -14,3 +14,6 @@ rayon = "1.5.1"
 smallvec = { version = "1.7.0", features = ["const_generics", "union", "write"] }
 tempfile = "3.2.0"
 thiserror = "1.0.30"
+
+[profile.release]
+lto = true

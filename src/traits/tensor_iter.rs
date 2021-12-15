@@ -1,4 +1,5 @@
 use super::{IdxType, ValType};
+use streaming_iterator::StreamingIterator;
 
 /// An iterator over a tensor.
 ///
@@ -7,7 +8,7 @@ use super::{IdxType, ValType};
 /// `IT` is the type of the indices of the tensor.
 ///
 /// Each element of the iterator is a tuple of the index and the value.
-pub trait TensorIter<'a, IT, VT>: Iterator<Item = (&'a [IT], &'a VT)>
+pub trait TensorIter<'a, IT, VT>: StreamingIterator<Item = (&'a [IT], &'a VT)>
 where
     IT: 'a + IdxType,
     VT: 'a + ValType,
@@ -22,7 +23,7 @@ where
 ///
 /// A mutable iterator is used to modify each element of the tensor.
 /// Each element of the iterator is a tuple of the index and the mutable value.
-pub trait TensorIterMut<'a, IT, VT>: Iterator<Item = (&'a [IT], &'a mut VT)>
+pub trait TensorIterMut<'a, IT, VT>: StreamingIterator<Item = (&'a [IT], &'a mut VT)>
 where
     IT: 'a + IdxType,
     VT: 'a + ValType,
@@ -37,7 +38,7 @@ where
 ///
 /// A moved iterator is used to consume each element of the tensor, meanwhile releasing the ownership of the tensor.
 /// Each element of the iterator is a tuple of the index and the moved value.
-pub trait TensorIntoIter<'a, IT, VT>: Iterator<Item = (&'a [IT], VT)>
+pub trait TensorIntoIter<'a, IT, VT>: StreamingIterator<Item = (&'a [IT], VT)>
 where
     IT: 'a + IdxType,
     VT: ValType,

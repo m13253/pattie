@@ -5,9 +5,11 @@
 //! [`pattie::structs::tensor::COOTensor`]: ../../structs/tensor/struct.COOTensor.html#method.read_from_text
 
 use super::lineno_reader::LineNumberReader;
-use crate::structs::axis::AxisBuilder;
+use crate::structs::axis::{Axes, AxisBuilder};
 use crate::structs::tensor::{self, COOTensor};
+use crate::structs::vec::{smallvec, SmallVec};
 use crate::traits;
+use ndarray::{aview0, aview1};
 use std::ascii;
 use std::borrow::Cow;
 use std::fmt::Display;
@@ -195,7 +197,7 @@ where
                     unreachable!();
                 }
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<SmallVec<_>, _>>()?;
 
         // Read until EOL
         eof = eof
@@ -246,7 +248,7 @@ where
                     unreachable!();
                 }
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<SmallVec<_>, _>>()?;
 
         // Read until EOL
         eof = eof
@@ -271,64 +273,56 @@ where
             .into_iter()
             .zip(upper_bound.into_iter())
             .map(|(lower, upper)| AxisBuilder::new().range(lower..upper).build())
-            .collect::<Vec<_>>();
-        let mut tensor = COOTensor::zeros(&shape, &vec![false; ndim]);
+            .collect::<Axes<_>>();
+        let is_axis_dense: SmallVec<_> = smallvec![false; ndim];
+        let mut tensor = COOTensor::zeros(&shape, &is_axis_dense);
+
+        if eof {
+            return Ok(tensor);
+        }
+
+        // Reuse index to save allocations
+        let mut index: SmallVec<_> = smallvec![IT::zero(); ndim];
 
         // For each line, until EOF
-        while !eof {
+        'a: while !eof {
             // Index
-            let index = shape
-                .iter()
-                .enumerate()
-                .map(|(dim, axis)| {
-                    if eof {
-                        return Ok(IT::zero());
-                    }
-                    let (line, column) = r.line_column();
-                    // EOF may be reached if dim == 0
-                    let token = read_until_token(
-                        &mut r,
-                        TokenMask {
-                            eof: dim == 0,
-                            new_line: false,
-                            comment: false,
-                            value: true,
-                        },
-                        TokenMask {
-                            eof: false,
-                            new_line: dim == 0,
-                            comment: true,
-                            value: false,
-                        },
-                    )?;
-                    match token {
-                        Token::Value(value) => {
-                            let idx =
-                                value
-                                    .parse::<IT>()
-                                    .map_err(|_| TensorReadError::ValueError {
-                                        line,
-                                        column,
-                                        value: value.into(),
-                                    })?;
-                            if axis.range().contains(&idx) {
-                                Ok(idx)
-                            } else {
-                                Err(TensorReadError::IndexOutOfBoundError { line, column })
-                            }
+            for (dim, (idx, axis)) in index.iter_mut().zip(shape.iter()).enumerate() {
+                let (line, column) = r.line_column();
+                // EOF may be reached if dim == 0
+                let token = read_until_token(
+                    &mut r,
+                    TokenMask {
+                        eof: dim == 0,
+                        new_line: false,
+                        comment: false,
+                        value: true,
+                    },
+                    TokenMask {
+                        eof: false,
+                        new_line: dim == 0,
+                        comment: true,
+                        value: false,
+                    },
+                )?;
+                match token {
+                    Token::Value(value) => {
+                        *idx = value
+                            .parse::<IT>()
+                            .map_err(|_| TensorReadError::ValueError {
+                                line,
+                                column,
+                                value: value.into(),
+                            })?;
+                        if !axis.range().contains(&idx) {
+                            return Err(TensorReadError::IndexOutOfBoundError { line, column });
                         }
-                        Token::EOF => {
-                            eof = true;
-                            Ok(IT::zero())
-                        }
-                        _ => unreachable!(),
                     }
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-
-            // If we reach an EOF, the whole `index` vector is guaranteed to be full-zero
-            if eof {
-                break;
+                    Token::EOF => {
+                        break 'a;
+                    }
+                    _ => unreachable!(),
+                }
             }
 
             let value = {
@@ -353,13 +347,13 @@ where
                         line,
                         column,
                         value: value.into(),
-                    })
+                    })?
                 } else {
                     unreachable!();
                 }
-            }?;
+            };
 
-            tensor.push_block(&index, &[value]);
+            tensor.push_block(aview1(&index), aview0(&value).into_dyn());
         }
 
         Ok(tensor)

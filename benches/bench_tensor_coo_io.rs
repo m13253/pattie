@@ -21,7 +21,7 @@ fn load_then_store_tensor(filename: &Path) -> Result<()> {
 }
 
 macro_rules! bench_tensor_io {
-    ($name:ident, $filename:expr) => {
+    ($name:ident, $filename:expr $(,)?) => {
         #[bench]
         fn $name(b: &mut Bencher) {
             b.iter(|| load_then_store_tensor(Path::new($filename)).unwrap());

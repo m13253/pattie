@@ -8,6 +8,7 @@ use crate::structs::tensor;
 use crate::traits::{IdxType, Tensor, ValType};
 use std::fmt;
 use std::io::{self, Write};
+use streaming_iterator::StreamingIterator;
 
 impl<IT, VT> tensor::COOTensor<IT, VT>
 where
@@ -80,7 +81,8 @@ where
         }
         writeln!(w)?;
 
-        for (index, value) in self.iter() {
+        let mut tensor_iter = self.iter();
+        while let Some(&(index, value)) = tensor_iter.next() {
             for index in index.iter() {
                 write!(w, "{}\t", index)?;
             }

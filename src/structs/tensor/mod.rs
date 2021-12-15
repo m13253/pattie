@@ -1,6 +1,7 @@
 //! Tensors.
 
 mod coo;
+mod coo_from_ndarray;
 mod coo_iter;
 mod coo_iter_mut;
 

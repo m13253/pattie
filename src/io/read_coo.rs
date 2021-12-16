@@ -19,7 +19,7 @@ use std::string::FromUtf8Error;
 use thiserror::Error;
 
 enum Token {
-    EOF,
+    Eof,
     NewLine,
     Comment,
     Value(String),
@@ -285,7 +285,7 @@ where
         let mut index: SmallVec<_> = smallvec![IT::zero(); ndim];
 
         // For each line, until EOF
-        'a: while !eof {
+        'a: loop {
             // Index
             for (dim, (idx, axis)) in index.iter_mut().zip(shape.iter()).enumerate() {
                 let (line, column) = r.line_column();
@@ -318,7 +318,7 @@ where
                             return Err(TensorReadError::IndexOutOfBoundError { line, column });
                         }
                     }
-                    Token::EOF => {
+                    Token::Eof => {
                         break 'a;
                     }
                     _ => unreachable!(),
@@ -443,7 +443,7 @@ where
             }
             None => {
                 if expect.eof {
-                    return Ok(Token::EOF);
+                    return Ok(Token::Eof);
                 } else {
                     return Err(TensorReadError::TokenizeError {
                         line,
@@ -474,7 +474,7 @@ where
     loop {
         let token = read_next_token(r, skip)?;
         match token {
-            Token::EOF => {
+            Token::Eof => {
                 if expect.eof {
                     return Ok(token);
                 }
@@ -559,18 +559,14 @@ where
         }
     }
     String::from_utf8(result).map_err(|source| TensorReadError::FromUtf8Error {
-            line,
-            column,
-            source,
-        })
+        line,
+        column,
+        source,
+    })
 }
 
 fn is_token_eof(token: &Token) -> bool {
-    if let Token::EOF = token {
-        true
-    } else {
-        false
-    }
+    matches!(token, Token::Eof)
 }
 
 impl Display for TokenMask {

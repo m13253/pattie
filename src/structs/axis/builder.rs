@@ -1,4 +1,4 @@
-use super::axis::Axis;
+use super::Axis;
 use crate::traits::IdxType;
 use std::borrow::Cow;
 use std::ops::Range;

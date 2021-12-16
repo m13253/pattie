@@ -12,7 +12,7 @@ where
 
 enum Peek {
     Byte(u8),
-    EOF,
+    Eof,
 }
 
 impl<R> LineNumberReader<R>
@@ -43,7 +43,7 @@ where
     pub fn peek_byte(&mut self) -> io::Result<Option<u8>> {
         match self.peek {
             Some(Peek::Byte(b)) => Ok(Some(b)),
-            Some(Peek::EOF) => Ok(None),
+            Some(Peek::Eof) => Ok(None),
             None => {
                 let mut buf = [0; 1];
                 let bytes_read = self.inner.read(&mut buf)?;
@@ -51,7 +51,7 @@ where
                     self.peek = Some(Peek::Byte(buf[0]));
                     Ok(Some(buf[0]))
                 } else {
-                    self.peek = Some(Peek::EOF);
+                    self.peek = Some(Peek::Eof);
                     Ok(None)
                 }
             }
@@ -70,7 +70,7 @@ where
                 }
                 Ok(Some(b))
             }
-            Some(Peek::EOF) => {
+            Some(Peek::Eof) => {
                 self.peek = None;
                 Ok(None)
             }
@@ -118,7 +118,7 @@ where
                     Ok(0)
                 }
             }
-            Some(Peek::EOF) => {
+            Some(Peek::Eof) => {
                 self.peek = None;
                 Ok(0)
             }

@@ -94,7 +94,7 @@ where
     fn from(axis: &'a Axis<IT>) -> Self {
         Self {
             label: axis.label().map(Cow::Borrowed),
-            range: Some(axis.range().clone()),
+            range: Some(axis.range()),
         }
     }
 }

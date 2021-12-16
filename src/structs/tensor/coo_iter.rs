@@ -44,7 +44,7 @@ where
             .enumerate()
             .collect::<SmallVec<_>>();
         dense_strides.sort_unstable_by(|(a_index, a_stride), (b_index, b_stride)| {
-            a_stride.cmp(&b_stride).then(b_index.cmp(&a_index))
+            a_stride.cmp(b_stride).then(b_index.cmp(a_index))
         });
         let dense_strides_sorted = dense_strides;
 

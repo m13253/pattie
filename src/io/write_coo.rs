@@ -63,7 +63,7 @@ where
             return Ok(());
         }
 
-        let mut shape_iter = self.shape().into_iter();
+        let mut shape_iter = self.shape().iter();
         if let Some(axis) = shape_iter.next() {
             write!(w, "{}", axis.lower())?;
         }
@@ -72,7 +72,7 @@ where
         }
         writeln!(w)?;
 
-        let mut shape_iter = self.shape().into_iter();
+        let mut shape_iter = self.shape().iter();
         if let Some(axis) = shape_iter.next() {
             write!(w, "{}", axis.upper())?;
         }

@@ -314,7 +314,7 @@ where
                                 column,
                                 value: value.into(),
                             })?;
-                        if !axis.range().contains(&idx) {
+                        if !axis.range().contains(idx) {
                             return Err(TensorReadError::IndexOutOfBoundError { line, column });
                         }
                     }
@@ -558,13 +558,11 @@ where
             None => break,
         }
     }
-    Ok(
-        String::from_utf8(result).map_err(|source| TensorReadError::FromUtf8Error {
+    String::from_utf8(result).map_err(|source| TensorReadError::FromUtf8Error {
             line,
             column,
             source,
-        })?,
-    )
+        })
 }
 
 fn is_token_eof(token: &Token) -> bool {

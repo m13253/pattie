@@ -14,7 +14,7 @@ where
     {
         let shape = array
             .shape()
-            .into_iter()
+            .iter()
             .map(|&x| AxisBuilder::new().range(0..x).build())
             .collect::<Axes<_>>();
         let dense_axes = shape.clone();

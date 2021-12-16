@@ -140,7 +140,7 @@ where
         let other_start = other.range.start.clone();
         let other_end = other.range.end.clone();
         AxisBuilder::new()
-            .range(self_start.min(other_start)..self_end.max(other_end.clone()))
+            .range(self_start.min(other_start)..self_end.max(other_end))
             .build()
     }
 
@@ -161,7 +161,7 @@ where
         let other_end = other.range.end.clone();
         AxisBuilder::new()
             .label(label)
-            .range(self_start.min(other_start.clone())..self_end.clone().max(other_end.clone()))
+            .range(self_start.min(other_start)..self_end.max(other_end))
             .build()
     }
 

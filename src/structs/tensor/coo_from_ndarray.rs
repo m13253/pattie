@@ -1,7 +1,8 @@
 use super::coo::{COOTensor, COOTensorInner};
 use crate::structs::axis::{Axes, AxisBuilder};
 use crate::traits::{IdxType, RawParts, ValType};
-use ndarray::{self, Array2, ArrayBase, Data, Dimension, RawData};
+use ndarray;
+use ndarray::{Array2, ArrayBase, Data, Dimension, RawData};
 use num::NumCast;
 
 impl<IT, VT> COOTensor<IT, VT>

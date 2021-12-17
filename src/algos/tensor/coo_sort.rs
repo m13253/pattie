@@ -1,10 +1,9 @@
-use std::mem;
-
 use crate::structs::axis::{map_axes_unwrap, Axes, Axis};
 use crate::structs::tensor::COOTensor;
 use crate::structs::vec::SmallVec;
 use crate::traits::{IdxType, RawParts, ValType};
 use ndarray::{Array2, ArrayD, ArrayView1, IxDyn};
+use std::mem;
 
 /// Task builder to sort the storage order of elements inside a `COOTensor`.
 pub struct SortCOOTensor<'a, IT, VT>

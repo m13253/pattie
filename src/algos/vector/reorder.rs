@@ -1,5 +1,6 @@
-use std::convert::identity;
-use std::mem::{transmute, MaybeUninit};
+use std::convert;
+use std::mem;
+use std::mem::MaybeUninit;
 
 /// Reorder a vector in place, the order is defined by `order`.
 /// After the reordering, the contents in `order` will become `0..len`.
@@ -22,7 +23,7 @@ pub fn reorder_forward<'a, T>(vec: &'a [T], order: &[usize]) -> Vec<&'a T> {
     }
     // # Safety
     // `result` is initialized, so it's safe to transmute it to a slice.
-    unsafe { transmute(result) }
+    unsafe { mem::transmute(result) }
 }
 
 /// Reorder a vector in place, the order is defined by `order`.
@@ -82,12 +83,12 @@ pub fn reorder_backward<'a, T>(vec: &'a [T], order: &[usize]) -> Vec<&'a T> {
         result[o].write(v);
         init[o] = true;
     }
-    if !init.into_iter().all(identity) {
+    if !init.into_iter().all(convert::identity) {
         panic!("missing index");
     }
     // # Safety
     // `result` is initialized, so it's safe to transmute it to a slice.
-    unsafe { transmute(result) }
+    unsafe { mem::transmute(result) }
 }
 
 /// Reorder a vector in place, the order is defined by `order`.

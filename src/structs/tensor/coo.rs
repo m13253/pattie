@@ -4,7 +4,7 @@ use crate::structs::axis::{Axes, Axis};
 use crate::traits::{IdxType, RawParts, Tensor, ValType};
 use ndarray::{self, Array2, ArrayD, ArrayView1, ArrayViewD};
 use std::fmt::Debug;
-use std::iter::once;
+use std::iter;
 
 #[derive(Clone, Debug)]
 pub struct COOTensor<IT, VT>
@@ -64,7 +64,7 @@ where
         }
         let indices = Array2::zeros((0, sparse_axes.len()));
         let values = ArrayD::zeros(
-            once(0)
+            iter::once(0)
                 .chain(
                     dense_axes
                         .iter()

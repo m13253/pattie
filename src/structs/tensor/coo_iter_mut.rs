@@ -2,7 +2,7 @@ use super::COOTensor;
 use crate::structs::axis::{map_axes_unwrap, Axis};
 use crate::structs::vec::{smallvec, SmallVec};
 use crate::traits::{IdxType, RawParts, ValType};
-use ndarray::{ArrayView2, ArrayViewMutD, Ix};
+use ndarray::{Array2, ArrayD, Ix};
 use num::{NumCast, ToPrimitive};
 use streaming_iterator::{DoubleEndedStreamingIterator, StreamingIterator};
 
@@ -13,8 +13,8 @@ where
     VT: 'a + ValType,
 {
     dense_axes: &'a [Axis<IT>],
-    indices: ArrayView2<'a, IT>,
-    values: ArrayViewMutD<'a, VT>,
+    indices: &'a Array2<IT>,
+    values: &'a mut ArrayD<VT>,
 
     dense_strides_sorted: SmallVec<(usize, isize)>,
 
@@ -38,8 +38,8 @@ where
         let shape = raw_parts.shape.as_slice();
         let sparse_axes = raw_parts.sparse_axes.as_slice();
         let dense_axes = raw_parts.dense_axes.as_slice();
-        let indices = raw_parts.indices.view();
-        let values = raw_parts.values.view_mut();
+        let indices = &raw_parts.indices;
+        let values = &mut raw_parts.values;
 
         let mut dense_strides = values
             .strides()

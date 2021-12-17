@@ -41,6 +41,7 @@ where
     /// Second line is the lower bound of each axis (inclusive).
     /// Third line is the upper bound of each axis (exclusive).
     /// The following lines are the elements of the tensor.
+    #[inline]
     pub fn write_to_text<W>(&self, w: &mut W) -> io::Result<()>
     where
         W: io::Write,
@@ -58,9 +59,23 @@ where
         let mut formatter = formatter;
         let mut w = io::BufWriter::new(w);
 
+        if let Some(name) = self.name() {
+            writeln!(w, "# {}", name)?;
+        }
+
         writeln!(w, "{}", self.ndim())?;
         if self.ndim() == 0 {
             return Ok(());
+        }
+
+        if self.shape().iter().any(|axis| axis.label().is_some()) {
+            for (i, axis) in self.shape().iter().enumerate() {
+                if let Some(label) = axis.label() {
+                    writeln!(w, "# Axis {}: {}", i, label)?;
+                } else {
+                    writeln!(w, "# Axis {} has no label", i)?;
+                }
+            }
         }
 
         let mut shape_iter = self.shape().iter();

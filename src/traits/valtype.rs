@@ -14,4 +14,4 @@ use std::fmt::{Debug, Display};
 /// my_func(42.0);
 /// ```
 pub trait ValType: Num + Clone + Debug + Display + Send + Sync {}
-impl<T> ValType for T where T: Num + Clone + Debug + Display + Send + Sync {}
+impl<T> ValType for T where T: Num + Clone + Debug + Display + Send + Sync + ?Sized {}

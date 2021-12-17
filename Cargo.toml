@@ -10,6 +10,7 @@ anyhow = "1.0.51"
 clap = "2.34.0"
 crossbeam = "0.8.1"
 ndarray = { version = "0.15.4", features = ["blas", "matrixmultiply-threading", "rayon"] }
+ndarray-rand = "0.14.0"
 num = "0.4.0"
 rayon = "1.5.1"
 smallvec = { version = "1.7.0", features = ["const_generics", "union", "write"] }

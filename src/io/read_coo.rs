@@ -96,6 +96,7 @@ where
     /// Second line is the lower bound of each axis (inclusive).
     /// Third line is the upper bound of each axis (exclusive).
     /// The following lines are the elements of the tensor.
+    #[inline]
     pub fn read_from_text<R>(r: &mut R) -> Result<tensor::COOTensor<IT, VT>, TensorReadError>
     where
         R: io::Read,

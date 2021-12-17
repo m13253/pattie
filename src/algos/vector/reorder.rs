@@ -14,11 +14,14 @@ use std::mem::{transmute, MaybeUninit};
 /// let result = reorder_forward(&array, &order).into_iter().map(Clone::clone).collect::<Vec<_>>();
 /// assert_eq!(result, vec!['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']);
 /// ```
+#[inline]
 pub fn reorder_forward<'a, T>(vec: &'a [T], order: &[usize]) -> Vec<&'a T> {
     let mut result = vec![MaybeUninit::uninit(); order.len()];
     for (r, &o) in result.iter_mut().zip(order.iter()) {
         r.write(&vec[o]);
     }
+    // # Safety
+    // `result` is initialized, so it's safe to transmute it to a slice.
     unsafe { transmute(result) }
 }
 
@@ -36,11 +39,14 @@ pub fn reorder_forward<'a, T>(vec: &'a [T], order: &[usize]) -> Vec<&'a T> {
 /// assert_eq!(array, vec!['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']);
 /// assert_eq!(order, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 /// ```
+#[inline]
 pub fn reorder_forward_inplace<T>(vec: &mut [T], order: &mut [usize]) {
     assert_eq!(vec.len(), order.len());
     let len = order.len();
     for i in 0..len {
         let mut u = i;
+        // # Safety
+        // `i` is always less than `len`. No need to bound check.
         let mut v = *unsafe { order.get_unchecked(i) };
         while i != v {
             vec.swap(u, v);
@@ -65,6 +71,7 @@ pub fn reorder_forward_inplace<T>(vec: &mut [T], order: &mut [usize]) {
 /// let result = reorder_backward(&array, &order).into_iter().map(Clone::clone).collect::<Vec<_>>();
 /// assert_eq!(result, vec!['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']);
 /// ```
+#[inline]
 pub fn reorder_backward<'a, T>(vec: &'a [T], order: &[usize]) -> Vec<&'a T> {
     let mut result = vec![MaybeUninit::uninit(); vec.len()];
     let mut init = vec![false; vec.len()];
@@ -78,6 +85,8 @@ pub fn reorder_backward<'a, T>(vec: &'a [T], order: &[usize]) -> Vec<&'a T> {
     if !init.into_iter().all(identity) {
         panic!("missing index");
     }
+    // # Safety
+    // `result` is initialized, so it's safe to transmute it to a slice.
     unsafe { transmute(result) }
 }
 
@@ -95,10 +104,13 @@ pub fn reorder_backward<'a, T>(vec: &'a [T], order: &[usize]) -> Vec<&'a T> {
 /// assert_eq!(array, vec!['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']);
 /// assert_eq!(order, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 /// ```
+#[inline]
 pub fn reorder_backward_inplace<T>(vec: &mut [T], order: &mut [usize]) {
     assert_eq!(vec.len(), order.len());
     let len = order.len();
     for i in 0..len {
+        // # Safety
+        // `i` is always less than `len`. No need to bound check.
         let mut v = *unsafe { order.get_unchecked(i) };
         while i != v {
             vec.swap(i, v);

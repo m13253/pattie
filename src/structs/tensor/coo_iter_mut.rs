@@ -1,9 +1,9 @@
 use super::COOTensor;
-use crate::structs::axis::Axis;
+use crate::structs::axis::{map_axes_unwrap, Axis};
 use crate::structs::vec::{smallvec, SmallVec};
-use crate::traits::{IdxType, Tensor, TensorIterMut, ValType};
+use crate::traits::{IdxType, RawParts, ValType};
 use ndarray::{ArrayView2, ArrayViewMutD, Ix};
-use num::NumCast;
+use num::{NumCast, ToPrimitive};
 use streaming_iterator::{DoubleEndedStreamingIterator, StreamingIterator};
 
 /// Mutable iterator for [`COOTensor`].
@@ -31,16 +31,15 @@ where
     IT: 'a + IdxType,
     VT: 'a + ValType,
 {
+    #[inline]
     pub(super) fn new(tensor: &'a mut COOTensor<IT, VT>) -> Self {
-        let shape = tensor.shape();
-        let sparse_axes = tensor.sparse_axes();
-        let dense_axes = tensor.dense_axes();
-        let (indices, values) = unsafe {
-            let tensor = (tensor as *const COOTensor<IT, VT> as *mut COOTensor<IT, VT>)
-                .as_mut::<'a>()
-                .unwrap_unchecked();
-            tensor.raw_data_mut()
-        };
+        let raw_parts = unsafe { tensor.raw_parts_mut() };
+
+        let shape = raw_parts.shape.as_slice();
+        let sparse_axes = raw_parts.sparse_axes.as_slice();
+        let dense_axes = raw_parts.dense_axes.as_slice();
+        let indices = raw_parts.indices.view();
+        let values = raw_parts.values.view_mut();
 
         let mut dense_strides = values
             .strides()
@@ -53,24 +52,16 @@ where
         });
         let dense_strides_sorted = dense_strides;
 
-        let dense_index_to_logic = dense_axes
-            .iter()
-            .map(|dense_axis| shape.iter().position(|axis| axis == dense_axis))
-            .collect::<Option<SmallVec<_>>>()
-            .expect("dense axis not found in shape");
-        let sparse_index_to_logic = sparse_axes
-            .iter()
-            .map(|sparse_axis| shape.iter().position(|axis| axis == sparse_axis))
-            .collect::<Option<SmallVec<_>>>()
-            .expect("sparse axis not found in shape");
+        let dense_index_to_logic = map_axes_unwrap(dense_axes, shape).collect::<SmallVec<_>>();
+        let sparse_index_to_logic = map_axes_unwrap(sparse_axes, shape).collect::<SmallVec<_>>();
 
         let dense_index_buffer = smallvec![0; values.ndim()];
         let logic_index_buffer = smallvec![IT::zero(); shape.len()];
 
         Self {
             dense_axes,
-            indices: indices.view(),
-            values: values.view_mut(),
+            indices,
+            values,
             dense_strides_sorted,
             dense_index_to_logic,
             sparse_index_to_logic,
@@ -80,6 +71,7 @@ where
         }
     }
 
+    #[inline]
     fn calc_result(&mut self) -> (&'a [IT], &'a mut VT) {
         let sparse_block_idx = self.dense_index_buffer[0];
         let sparse_index_buffer = self.indices.row(sparse_block_idx);
@@ -97,14 +89,24 @@ where
             .zip(self.dense_axes.iter())
             .zip(self.dense_index_to_logic.iter())
         {
-            self.logic_index_buffer[axis_idx] =
-                <IT as NumCast>::from(index).unwrap() + axis.lower();
+            // Checking overflow, since we are converting usize into IT
+            self.logic_index_buffer[axis_idx] = <IT as NumCast>::from(
+                index
+                    .to_isize()
+                    .unwrap()
+                    .checked_add(axis.lower().to_isize().unwrap())
+                    .unwrap(),
+            )
+            .unwrap();
         }
 
         let result: (&[IT], &mut VT) = (
             &self.logic_index_buffer,
             &mut self.values[self.dense_index_buffer.as_slice()],
         );
+        // # Safety
+        // TODO: I can't pass the borrow checker.
+        // There must be a better way to do this.
         unsafe {
             (
                 (result.0 as *const [IT]).as_ref::<'a>().unwrap_unchecked(),
@@ -123,6 +125,7 @@ where
 {
     type Item = (&'a [IT], &'a mut VT);
 
+    #[inline]
     fn advance(&mut self) {
         if self.result_buffer.is_some() {
             for &(dense_axis, _stride) in self.dense_strides_sorted.iter() {
@@ -147,10 +150,12 @@ where
         }
     }
 
+    #[inline]
     fn get(&self) -> Option<&Self::Item> {
         self.result_buffer.as_ref()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let size_hint = self.values.len();
         (size_hint, Some(size_hint))
@@ -162,6 +167,7 @@ where
     IT: 'a + IdxType,
     VT: 'a + ValType,
 {
+    #[inline]
     fn advance_back(&mut self) {
         if self.result_buffer.is_some() {
             for &(dense_axis, _stride) in self.dense_strides_sorted.iter() {
@@ -188,11 +194,4 @@ where
             self.result_buffer = Some(self.calc_result());
         }
     }
-}
-
-impl<'a, IT, VT> TensorIterMut<'a, IT, VT> for COOIterMut<'a, IT, VT>
-where
-    IT: 'a + IdxType,
-    VT: 'a + ValType,
-{
 }

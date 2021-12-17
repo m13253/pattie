@@ -1,11 +1,12 @@
 mod axes;
 mod builder;
 
-pub use self::axes::Axes;
+pub use self::axes::{map_axes, map_axes_unwrap, Axes};
 pub use self::builder::AxisBuilder;
 
 use crate::traits::IdxType;
 use std::borrow::Cow;
+use std::fmt::{Debug, Display};
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 
@@ -32,6 +33,7 @@ where
     /// let axis = AxisBuilder::new().label("x").range(0..10).build();
     /// assert_eq!(axis.label(), Some("x"));
     /// ```
+    #[inline]
     pub fn label(&self) -> Option<&str> {
         self.label.as_deref()
     }
@@ -44,6 +46,7 @@ where
     /// let axis = AxisBuilder::new().range(0..10).build();
     /// assert_eq!(axis.range(), 0..10);
     /// ```
+    #[inline]
     pub fn range(&self) -> Range<IT> {
         self.range.clone()
     }
@@ -56,6 +59,7 @@ where
     /// let axis = AxisBuilder::new().range(10..0).build();
     /// assert!(axis.is_empty());
     /// ```
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.range.is_empty()
     }
@@ -68,6 +72,7 @@ where
     /// let axis = AxisBuilder::new().range(0..10).build();
     /// assert_eq!(axis.lower(), 0);
     /// ```
+    #[inline]
     pub fn lower(&self) -> IT {
         self.range.start.clone()
     }
@@ -80,6 +85,7 @@ where
     /// let axis = AxisBuilder::new().range(0..10).build();
     /// assert_eq!(axis.upper(), 10);
     /// ```
+    #[inline]
     pub fn upper(&self) -> IT {
         self.range.end.clone()
     }
@@ -93,6 +99,7 @@ where
     /// let axis = AxisBuilder::new().range(0..10).build();
     /// assert_eq!(axis.size(), 10);
     /// ```
+    #[inline]
     pub fn size(&self) -> IT {
         if self.range.start < self.range.end {
             self.range.end.clone() - self.range.start.clone()
@@ -111,6 +118,7 @@ where
     /// let new_axis = axis.clone_with_label("y");
     /// assert_eq!(new_axis.label(), Some("y"));
     /// ```
+    #[inline]
     pub fn clone_with_label<'a>(&'a self, label: impl Into<Cow<'a, str>>) -> Self {
         AxisBuilder::from(self).label(label).build()
     }
@@ -125,6 +133,7 @@ where
     /// let new_axis = axis.clone_with_range(0..20);
     /// assert_eq!(new_axis.range(), 0..20);
     /// ```
+    #[inline]
     pub fn clone_with_range(&self, range: Range<IT>) -> Self {
         AxisBuilder::from(self).range(range).build()
     }
@@ -139,6 +148,7 @@ where
     /// let new_axis = axis1.extend(&axis2);
     /// assert_eq!(new_axis.range(), 0..30);
     /// ```
+    #[inline]
     pub fn extend(&self, other: &Self) -> Self {
         let self_start = self.range.start.clone();
         let self_end = self.range.end.clone();
@@ -159,6 +169,7 @@ where
     /// let new_axis = axis1.extend_with_label(&axis2, "z");
     /// assert_eq!(new_axis.range(), 0..30);
     /// ```
+    #[inline]
     pub fn extend_with_label<'a>(&'a self, other: &Self, label: impl Into<Cow<'a, str>>) -> Self {
         let self_start = self.range.start.clone();
         let self_end = self.range.end.clone();
@@ -184,6 +195,7 @@ where
     /// let new_axis = axis1.intersect(&axis2);
     /// assert!(new_axis.is_empty());
     /// ```
+    #[inline]
     pub fn intersect(&self, other: &Self) -> Self {
         let self_start = self.range.start.clone();
         let self_end = self.range.end.clone();
@@ -208,6 +220,7 @@ where
     /// let new_axis = axis1.intersect_with_label(&axis2, "z");
     /// assert!(new_axis.is_empty());
     /// ```
+    #[inline]
     pub fn intersect_with_label<'a>(
         &'a self,
         other: &Self,
@@ -224,6 +237,20 @@ where
     }
 }
 
+impl<IT> Display for Axis<IT>
+where
+    IT: IdxType,
+{
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(label) = self.label() {
+            write!(f, "{}({}..{})", label, self.lower(), self.upper())
+        } else {
+            write!(f, "ax#{}({}..{})", self.id, self.lower(), self.upper())
+        }
+    }
+}
+
 impl<IT> PartialEq for Axis<IT>
 where
     IT: IdxType,
@@ -235,6 +262,7 @@ where
     ///
     /// This is to ensure axes across different tensors are tracked correctly.
     /// If you want to associate two axes into one, use [`Axis::extend`] or [`Axis::intersect`].
+    #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
@@ -246,8 +274,27 @@ impl<IT> Hash for Axis<IT>
 where
     IT: IdxType,
 {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
+    }
+}
+
+impl<IT> From<Range<IT>> for Axis<IT>
+where
+    IT: IdxType,
+{
+    /// Creates a new axis with the given range.
+    /// The range is half-inclusive, for example, `0..10` contains 0 but not 10.
+    ///
+    /// ```
+    /// use pattie::structs::axis::Axis;
+    ///
+    /// let axis = Axis::from(0..10);
+    /// ```
+    #[inline]
+    fn from(range: Range<IT>) -> Self {
+        AxisBuilder::new().range(range).build()
     }
 }
 
@@ -264,24 +311,8 @@ where
     /// let axis = Axis::from(10);
     /// assert_eq!(axis.range(), 0..10);
     /// ```
+    #[inline]
     fn from(upper: IT) -> Self {
         AxisBuilder::new().range(IT::zero()..upper).build()
-    }
-}
-
-impl<IT> From<Range<IT>> for Axis<IT>
-where
-    IT: IdxType,
-{
-    /// Creates a new axis with the given range.
-    /// The range is half-inclusive, for example, `0..10` contains 0 but not 10.
-    ///
-    /// ```
-    /// use pattie::structs::axis::Axis;
-    ///
-    /// let axis = Axis::from(0..10);
-    /// ```
-    fn from(range: Range<IT>) -> Self {
-        AxisBuilder::new().range(range).build()
     }
 }

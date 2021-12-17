@@ -16,6 +16,9 @@ where
     /// The name of the tensor (optional).
     fn name(&self) -> Option<&str>;
 
+    /// Change the name of the tensor.
+    fn name_mut(&mut self) -> &mut Option<String>;
+
     /// The number of dimensions of the tensor.
     ///
     /// For example, 0 means scalar, 1 means vector, 2 means matrix, etc.

@@ -15,6 +15,14 @@ where
 {
 }
 
+impl<'a, T, IT, VT> TensorIter<'a, IT, VT> for T
+where
+    IT: 'a + IdxType,
+    VT: 'a + ValType,
+    T: StreamingIterator<Item = (&'a [IT], &'a VT)>,
+{
+}
+
 /// A mutable iterator over a tensor.
 ///
 /// `'a` is the lifetime of the tensor from which the iterator is created.
@@ -30,6 +38,14 @@ where
 {
 }
 
+impl<'a, T, IT, VT> TensorIterMut<'a, IT, VT> for T
+where
+    IT: 'a + IdxType,
+    VT: 'a + ValType,
+    T: StreamingIterator<Item = (&'a [IT], &'a mut VT)>,
+{
+}
+
 /// A moved iterator over a tensor.
 ///
 /// `'a` is the lifetime of the tensor from which the iterator is created.
@@ -42,5 +58,13 @@ pub trait TensorIntoIter<'a, IT, VT>: StreamingIterator<Item = (&'a [IT], VT)>
 where
     IT: 'a + IdxType,
     VT: ValType,
+{
+}
+
+impl<'a, T, IT, VT> TensorIntoIter<'a, IT, VT> for T
+where
+    IT: 'a + IdxType,
+    VT: ValType,
+    T: StreamingIterator<Item = (&'a [IT], VT)>,
 {
 }

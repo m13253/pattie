@@ -1,7 +1,7 @@
 mod axes;
 mod builder;
 
-pub use self::axes::{map_axes, map_axes_unwrap, Axes};
+pub use self::axes::{map_axes, map_axes_ok, map_axes_unwrap, Axes};
 pub use self::builder::AxisBuilder;
 
 use crate::traits::IdxType;

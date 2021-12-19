@@ -57,6 +57,36 @@ where
     })
 }
 
+/// Same as [`map_axes`], but returns Option instead of Result.
+///
+/// ```
+/// use pattie::structs::axis::{AxisBuilder, map_axes_ok};
+///
+/// let to = [
+///     AxisBuilder::new().range(0..10).build(),
+///     AxisBuilder::new().range(0..10).build(),
+///     AxisBuilder::new().range(0..10).build(),
+///     AxisBuilder::new().range(0..10).build(),
+///     AxisBuilder::new().range(0..10).build(),
+/// ];
+/// let from = [
+///     to[0].clone(), to[2].clone(), to[4].clone(),
+/// ];
+/// let map = map_axes_ok(&from, &to).collect::<Vec<_>>();
+/// assert_eq!(&map, &[Some(0), Some(2), Some(4)]);
+/// ```
+#[inline]
+pub fn map_axes_ok<'a, IT>(
+    from: &'a [Axis<IT>],
+    to: &'a [Axis<IT>],
+) -> impl Iterator<Item = Option<usize>> + 'a
+where
+    IT: IdxType,
+{
+    from.iter()
+        .map(|axis| to.iter().position(|to_axis| to_axis == axis))
+}
+
 /// Same as [`map_axes`], but panics if any axis is not found.
 ///
 /// ```

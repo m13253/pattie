@@ -2,8 +2,7 @@ use crate::structs::axis::{map_axes_unwrap, Axes, Axis};
 use crate::structs::tensor::COOTensor;
 use crate::structs::vec::SmallVec;
 use crate::traits::{IdxType, RawParts, ValType};
-use ndarray::{Array2, ArrayD, ArrayView1, IxDyn};
-use std::mem;
+use ndarray::{Array2, ArrayView1, ArrayViewMut2};
 
 /// Task builder to sort the storage order of elements inside a `COOTensor`.
 pub struct SortCOOTensor<'a, IT, VT>
@@ -24,7 +23,10 @@ where
     /// Use `prepare` to specify the order of axis to sort tensors into.
     /// After configuring the task builder, use `execute` to perform the sort.
     pub fn new() -> Self {
-        Default::default()
+        Self {
+            tensor: None,
+            order: None,
+        }
     }
 
     /// Specify the order of axis to sort tensors into.
@@ -38,34 +40,74 @@ where
     /// Perform the sorting.
     ///
     /// The sort operation uses quick-sort algorithm, but may change in future versions.
-    ///
-    /// # Example
-    /// ```
-    /// use pattie::structs::tensor::COOTensor;
-    /// use pattie::algos::tensor::SortCOOTensor;
-    ///
-    /// let mut tensor = COOTensor::<f32, usize>::zeros(vec![3, 2, 3, 4]);
-    /// let axes = tensor.sparse_axes();
-    /// let order = [0, 1, 3, 2].iter().map(|i| axes[i].clone()).collect::<Vec<_>>();
-    /// let task = SortCOOTensor::new().with_order(tensor, &order);
-    /// task.execute();
-    /// ```
     pub fn execute(self) {
         let tensor = self.tensor.unwrap();
         let raw_parts = unsafe { tensor.raw_parts_mut() };
         let order = self.order.as_ref().unwrap().as_slice();
         let order_index = map_axes_unwrap(order, &raw_parts.sparse_axes).collect::<SmallVec<_>>();
 
+        // Reshape values into 2D array for more efficient indexing.
         let num_blocks = raw_parts.indices.nrows();
-        let values_shape = raw_parts.values.raw_dim();
-        let values_2d_shape = (
-            raw_parts.values.shape()[0],
-            raw_parts.values.shape()[1..].iter().product::<usize>(),
-        );
-        assert_eq!(num_blocks, values_2d_shape.0);
-        let mut values_2d = mem::replace(&mut raw_parts.values, ArrayD::zeros(IxDyn(&[])))
+        let values_shape = raw_parts.values.shape().split_first().unwrap();
+        assert_eq!(num_blocks, *values_shape.0);
+        let values_2d_shape = (*values_shape.0, values_shape.1.iter().product());
+        let mut values_2d = raw_parts
+            .values
+            .view_mut()
             .into_shape(values_2d_shape)
             .unwrap();
+
+        // Call the quick sort algorithm.
+        sort_subtensor(
+            &mut raw_parts.indices,
+            &mut values_2d,
+            &order_index,
+            0,
+            num_blocks,
+        );
+
+        // Mark the tensor as sorted.
+        raw_parts.sparse_sort_order = self.order.unwrap().clone();
+        raw_parts.sparse_is_sorted = true;
+
+        fn sort_subtensor<IT, VT>(
+            indices: &mut Array2<IT>,
+            values: &mut ArrayViewMut2<VT>,
+            order: &[usize],
+            from: usize,
+            to: usize,
+        ) where
+            IT: IdxType,
+            VT: ValType,
+        {
+            if to - from < 2 {
+                return;
+            }
+            let mut pivot = (from + to) / 2;
+            let mut i = from;
+            let mut j = to - 1;
+            loop {
+                while index_less_than(order, &indices.row(i), &indices.row(pivot)) {
+                    i += 1;
+                }
+                while index_less_than(order, &indices.row(j), &indices.row(pivot)) {
+                    j -= 1;
+                }
+                if i >= j {
+                    break;
+                }
+                swap_block(indices, values, i, j);
+                if i == pivot {
+                    pivot = j;
+                } else if j == pivot {
+                    pivot = i;
+                }
+                i += 1;
+                j -= 1;
+            }
+            sort_subtensor(indices, values, order, from, j);
+            sort_subtensor(indices, values, order, i, to);
+        }
 
         fn index_less_than<IT>(order: &[usize], a: &ArrayView1<IT>, b: &ArrayView1<IT>) -> bool
         where
@@ -79,62 +121,26 @@ where
             true
         }
 
-        fn sort_subtensor<IT, VT>(
+        fn swap_block<IT, VT>(
             indices: &mut Array2<IT>,
-            values: &mut Array2<VT>,
-            order: &[usize],
-            from: usize,
-            to: usize,
+            values: &mut ArrayViewMut2<VT>,
+            a: usize,
+            b: usize,
         ) where
-            VT: ValType,
             IT: IdxType,
+            VT: ValType,
         {
-            if from >= to {
-                return;
-            }
-            let mut pivot = (from + to) / 2;
-            let mut i = from;
-            let mut j = to - 1;
-            while i < j {
-                while index_less_than(order, &indices.row(i), &indices.row(pivot)) {
-                    i += 1;
-                }
-                while index_less_than(order, &indices.row(j), &indices.row(pivot)) {
-                    j -= 1;
-                }
-                if i < j {
-                    if pivot == i {
-                        pivot = j;
-                    } else if pivot == j {
-                        pivot = i;
-                    }
-                    for d in 0..indices.ncols() {
-                        unsafe {
-                            indices.uswap((i, d), (j, d));
-                        }
-                    }
-                    for v in 0..values.ncols() {
-                        unsafe {
-                            values.uswap((i, v), (j, v));
-                        }
-                    }
-                    i += 1;
-                    j -= 1;
+            for offset in 0..indices.ncols() {
+                unsafe {
+                    indices.uswap((a, offset), (b, offset));
                 }
             }
-            sort_subtensor(indices, values, order, from, j);
-            sort_subtensor(indices, values, order, i, to);
+            for offset in 0..values.ncols() {
+                unsafe {
+                    values.uswap((a, offset), (b, offset));
+                }
+            }
         }
-
-        sort_subtensor(
-            &mut raw_parts.indices,
-            &mut values_2d,
-            &order_index,
-            0,
-            num_blocks,
-        );
-
-        raw_parts.values = values_2d.into_shape(values_shape).unwrap();
     }
 }
 
@@ -144,9 +150,6 @@ where
     VT: ValType,
 {
     fn default() -> Self {
-        Self {
-            tensor: None,
-            order: None,
-        }
+        Self::new()
     }
 }

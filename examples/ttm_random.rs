@@ -9,7 +9,7 @@ use pattie::traits::Tensor;
 use pattie::utils::hint::black_box;
 use std::fs::File;
 use std::iter;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 fn main() -> Result<()> {
     let matches = App::new("COO sparse tensor I/O example")
@@ -45,7 +45,11 @@ fn main() -> Result<()> {
     let mut tensor = COOTensor::<u32, f32>::read_from_text(&mut input_file)?;
     drop(input_file);
 
-    println!("Input tensor shape:  {}", axes_to_string(tensor.shape()));
+    println!(
+        "Input tensor shape:  {}\t({} elements)",
+        axes_to_string(tensor.shape()),
+        tensor.num_non_zeros()
+    );
 
     let mode = matches.value_of("mode").unwrap().parse::<usize>()?;
     assert!(mode < tensor.shape().len());
@@ -54,8 +58,13 @@ fn main() -> Result<()> {
     let ncols = 0..matches.value_of("rank").unwrap().parse::<u32>()?;
     let matrix = create_random_dense_matrix::<u32, f32, _, _>((nrows, ncols), 0.0, 1.0)?;
 
-    println!("Random matrix shape: {}", axes_to_string(matrix.shape()));
+    println!(
+        "Random matrix shape: {}\t({} elements)",
+        axes_to_string(matrix.shape()),
+        matrix.num_non_zeros()
+    );
 
+    println!("Sorting tensor...");
     let sort_order = iter::once(common_axis)
         .chain(tensor.sparse_axes().iter().filter(|&ax| ax != common_axis))
         .cloned()
@@ -64,14 +73,33 @@ fn main() -> Result<()> {
         .prepare(&mut tensor, &sort_order)
         .execute();
 
+    println!("Warming up...");
     let ttm_task = black_box(COOTensorMulDenseMatrix::new().prepare(&tensor, &matrix)?);
-    let start_time = Instant::now();
     let output = black_box(ttm_task.execute()?);
-    let elapsed_time = start_time.elapsed();
-
-    println!("Output tensor shape: {}", axes_to_string(output.shape()));
     println!(
-        "Elapsed time: {}.{:09} seconds",
+        "Output tensor shape: {}\t({} elements)",
+        axes_to_string(output.shape()),
+        output.num_non_zeros()
+    );
+    drop(output);
+
+    const MIN_ELAPSED_TIME: Duration = Duration::from_secs(3);
+    let mut elapsed_time = Duration::ZERO;
+    let mut rounds = 0;
+
+    println!("Running benchmark...");
+    while elapsed_time < MIN_ELAPSED_TIME {
+        let ttm_task = black_box(COOTensorMulDenseMatrix::new().prepare(&tensor, &matrix)?);
+        let start_time = Instant::now();
+        let _output = black_box(ttm_task.execute()?);
+        elapsed_time += start_time.elapsed();
+        rounds += 1;
+    }
+    elapsed_time /= rounds;
+
+    println!("Number of iterations: {}", rounds);
+    println!(
+        "Time per iteration:   {}.{:09} seconds",
         elapsed_time.as_secs(),
         elapsed_time.subsec_nanos()
     );

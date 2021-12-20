@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::{App, Arg};
+use pattie::structs::axis::axes_to_string;
 use pattie::structs::tensor::COOTensor;
+use pattie::traits::Tensor;
 use std::fs::File;
 
 fn main() -> Result<()> {
@@ -28,6 +30,12 @@ fn main() -> Result<()> {
     let mut input_file = File::open(input_filename)?;
     let tensor = COOTensor::<u32, f32>::read_from_text(&mut input_file)?;
     drop(input_file);
+
+    println!(
+        "Tensor shape: {}\t({} elements)",
+        axes_to_string(tensor.shape()),
+        tensor.num_non_zeros()
+    );
 
     let output_filename = matches.value_of_os("output").unwrap();
     eprintln!("Writing tensor to {}", output_filename.to_string_lossy());

@@ -121,6 +121,11 @@ where
     }
 
     #[inline]
+    pub fn num_blocks(&self) -> usize {
+        self.inner.indices.nrows()
+    }
+
+    #[inline]
     pub fn push_block(&mut self, sparse_index: ArrayView1<IT>, value: ArrayViewD<VT>) {
         assert_eq!(sparse_index.len(), self.inner.sparse_axes.len());
         assert!(sparse_index

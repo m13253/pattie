@@ -28,7 +28,6 @@ where
         let dense_axes = shape.clone();
         let indices = Array2::zeros((1, 0));
         let values = array.insert_axis(ndarray::Axis(0)).into_dyn().into_owned();
-        let sparse_sort_order = shape.clone();
 
         let raw_parts = COOTensorInner {
             name: None,
@@ -38,7 +37,7 @@ where
             indices,
             values,
             sparse_is_sorted: true,
-            sparse_sort_order,
+            sparse_sort_order: Axes::new(),
         };
         // # Safety
         // We have checked the data integrity

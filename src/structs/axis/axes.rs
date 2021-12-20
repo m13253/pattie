@@ -1,6 +1,7 @@
 use super::Axis;
 use crate::structs::vec::SmallVec;
 use crate::traits::IdxType;
+use std::fmt::Write;
 use thiserror::Error;
 
 /// A special [`SmallVec`] that is used to store axes of tensors.
@@ -15,6 +16,24 @@ where
 {
     #[error("axis {} not found", axis)]
     AxisNotFound { axis: Axis<IT> },
+}
+
+pub fn axes_to_string<IT>(axis: &[Axis<IT>]) -> String
+where
+    IT: IdxType,
+{
+    if axis.is_empty() {
+        return "[]".to_string();
+    }
+    let mut s = String::new();
+    s.push('[');
+    let mut it = axis.iter();
+    write!(s, "{}", it.next().unwrap()).unwrap();
+    for i in it {
+        write!(s, ", {}", i).unwrap();
+    }
+    s.push(']');
+    s
 }
 
 /// Locate the index of each `from` axis in the array of `to`.

@@ -214,7 +214,7 @@ where
                         })
                 {
                     let index_buffer = reference
-                        .row(last_index)
+                        .row(i)
                         .iter()
                         .enumerate()
                         .filter_map(|(ax, index)| {

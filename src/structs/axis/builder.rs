@@ -125,25 +125,6 @@ where
     }
 }
 
-impl<'a, IT> From<IT> for AxisBuilder<'a, IT>
-where
-    IT: IdxType,
-{
-    /// Creates a new builder with a range `0..upper`.
-    /// The range is half-inclusive, for example, `0..10` contains 0 but not 10.
-    ///
-    /// ```
-    /// use pattie::structs::axis::AxisBuilder;
-    ///
-    /// let axis = AxisBuilder::from(10).build();
-    /// assert_eq!(axis.range(), 0..10);
-    /// ```
-    #[inline]
-    fn from(upper: IT) -> Self {
-        AxisBuilder::new().range(IT::zero()..upper)
-    }
-}
-
 impl<'a, IT> Default for AxisBuilder<'a, IT>
 where
     IT: IdxType,

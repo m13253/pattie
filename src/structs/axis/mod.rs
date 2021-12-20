@@ -1,7 +1,7 @@
 mod axes;
 mod builder;
 
-pub use self::axes::{map_axes, map_axes_ok, map_axes_unwrap, Axes};
+pub use self::axes::{axes_to_string, map_axes, map_axes_ok, map_axes_unwrap, Axes};
 pub use self::builder::AxisBuilder;
 
 use crate::traits::IdxType;
@@ -295,24 +295,5 @@ where
     #[inline]
     fn from(range: Range<IT>) -> Self {
         AxisBuilder::new().range(range).build()
-    }
-}
-
-impl<IT> From<IT> for Axis<IT>
-where
-    IT: IdxType,
-{
-    /// Creates a new axis with a range `0..upper`.
-    /// The range is half-inclusive, for example, `0..10` contains 0 but not 10.
-    ///
-    /// ```
-    /// use pattie::structs::axis::Axis;
-    ///
-    /// let axis = Axis::from(10);
-    /// assert_eq!(axis.range(), 0..10);
-    /// ```
-    #[inline]
-    fn from(upper: IT) -> Self {
-        AxisBuilder::new().range(IT::zero()..upper).build()
     }
 }

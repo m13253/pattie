@@ -1,8 +1,7 @@
-use std::fs::File;
-
 use anyhow::Result;
 use clap::{App, Arg};
-use pattie::structs::tensor;
+use pattie::structs::tensor::COOTensor;
+use std::fs::File;
 
 fn main() -> Result<()> {
     let matches = App::new("COO sparse tensor I/O example")
@@ -27,7 +26,7 @@ fn main() -> Result<()> {
     let input_filename = matches.value_of_os("input").unwrap();
     eprintln!("Reading tensor from {}", input_filename.to_string_lossy());
     let mut input_file = File::open(input_filename)?;
-    let tensor = tensor::COOTensor::<u32, f32>::read_from_text(&mut input_file)?;
+    let tensor = COOTensor::<u32, f32>::read_from_text(&mut input_file)?;
     drop(input_file);
 
     let output_filename = matches.value_of_os("output").unwrap();

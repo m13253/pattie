@@ -30,6 +30,7 @@ where
     }
 
     /// Specify the order of axis to sort tensors into.
+    #[must_use]
     pub fn prepare(mut self, tensor: &'a mut COOTensor<IT, VT>, order: &[Axis<IT>]) -> Self {
         assert_eq!(tensor.sparse_axes().len(), order.len());
         self.tensor = Some(tensor);
@@ -67,7 +68,7 @@ where
         );
 
         // Mark the tensor as sorted.
-        raw_parts.sparse_sort_order = self.order.unwrap().clone();
+        raw_parts.sparse_sort_order = self.order.unwrap();
         raw_parts.sparse_is_sorted = true;
 
         fn sort_subtensor<IT, VT>(

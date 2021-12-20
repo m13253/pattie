@@ -46,7 +46,7 @@ where
         self.matrix = Some(matrix);
 
         // Check if the tensor is fully sparse.
-        if tensor.dense_axes().len() != 0 {
+        if !tensor.dense_axes().is_empty() {
             bail!("The tensor must be fully sparse.");
         }
         // Check if the matrix has 2 axes.
@@ -54,7 +54,7 @@ where
             bail!("The matrix must have 2 axes.");
         }
         // Check if the matrix is fully dense.
-        if matrix.sparse_axes().len() != 0 {
+        if !matrix.sparse_axes().is_empty() {
             bail!("The matrix must be fully dense.");
         }
 
@@ -172,12 +172,12 @@ where
         let result = COOTensorInner {
             name: None,
             shape: result_shape,
-            sparse_axes: sparse_axes,
+            sparse_axes,
             dense_axes: smallvec![common_axis.clone()],
-            indices: indices,
+            indices,
             values: values.into_dyn(),
             sparse_is_sorted: true,
-            sparse_sort_order: sparse_sort_order,
+            sparse_sort_order,
         };
 
         return Ok(
@@ -186,7 +186,7 @@ where
             unsafe { COOTensor::from_raw_parts(result) },
         );
 
-        fn compute_semi_sparse_indices<'a, IT>(
+        fn compute_semi_sparse_indices<IT>(
             reference: &Array2<IT>,
             common_axis_index: usize,
         ) -> (Array2<IT>, Vec<usize>)

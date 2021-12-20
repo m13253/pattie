@@ -20,11 +20,7 @@ where
     Ax2: IntoAxis<IT>,
 {
     let shape = [shape.0.into_axis(), shape.1.into_axis()];
-    let shape_size = (
-        1,
-        shape[0].size().to_usize().unwrap(),
-        shape[1].size().to_usize().unwrap(),
-    );
+    let shape_size = (1, shape[0].size(), shape[1].size());
     let matrix = Array3::random(shape_size, Normal::new(mean, std_dev)?);
 
     let raw_parts = COOTensorInner {

@@ -35,6 +35,7 @@ where
     /// assert_eq!(axis.label(), Some("x"));
     /// ```
     #[inline]
+    #[must_use]
     pub fn label(self, label: impl Into<Cow<'a, str>>) -> Self {
         Self {
             label: Some(label.into()),
@@ -52,6 +53,7 @@ where
     /// assert_eq!(axis.range(), 0..10);
     /// ```
     #[inline]
+    #[must_use]
     pub fn range(self, range: Range<IT>) -> Self {
         Self {
             range: Some(range),

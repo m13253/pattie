@@ -100,11 +100,13 @@ where
     /// assert_eq!(axis.size(), 10);
     /// ```
     #[inline]
-    pub fn size(&self) -> IT {
+    pub fn size(&self) -> usize {
         if self.range.start < self.range.end {
-            self.range.end.clone() - self.range.start.clone()
+            (self.range.end.clone() - self.range.start.clone())
+                .to_usize()
+                .unwrap()
         } else {
-            IT::zero()
+            0
         }
     }
 
@@ -119,6 +121,7 @@ where
     /// assert_eq!(new_axis.label(), Some("y"));
     /// ```
     #[inline]
+    #[must_use]
     pub fn clone_with_label<'a>(&'a self, label: impl Into<Cow<'a, str>>) -> Self {
         AxisBuilder::from(self).label(label).build()
     }
@@ -134,6 +137,7 @@ where
     /// assert_eq!(new_axis.range(), 0..20);
     /// ```
     #[inline]
+    #[must_use]
     pub fn clone_with_range(&self, range: Range<IT>) -> Self {
         AxisBuilder::from(self).range(range).build()
     }
@@ -149,6 +153,7 @@ where
     /// assert_eq!(new_axis.range(), 0..30);
     /// ```
     #[inline]
+    #[must_use]
     pub fn extend(&self, other: &Self) -> Self {
         let self_start = self.range.start.clone();
         let self_end = self.range.end.clone();
@@ -170,6 +175,7 @@ where
     /// assert_eq!(new_axis.range(), 0..30);
     /// ```
     #[inline]
+    #[must_use]
     pub fn extend_with_label<'a>(&'a self, other: &Self, label: impl Into<Cow<'a, str>>) -> Self {
         let self_start = self.range.start.clone();
         let self_end = self.range.end.clone();
@@ -196,6 +202,7 @@ where
     /// assert!(new_axis.is_empty());
     /// ```
     #[inline]
+    #[must_use]
     pub fn intersect(&self, other: &Self) -> Self {
         let self_start = self.range.start.clone();
         let self_end = self.range.end.clone();
@@ -221,6 +228,7 @@ where
     /// assert!(new_axis.is_empty());
     /// ```
     #[inline]
+    #[must_use]
     pub fn intersect_with_label<'a>(
         &'a self,
         other: &Self,

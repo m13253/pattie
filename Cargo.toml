@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.51"
 clap = "2.34.0"
-criterion = "0.3.5"
+bencher = "0.1.5"
 crossbeam = "0.8.1"
 ndarray = { version = "0.15.4", features = ["blas", "matrixmultiply-threading", "rayon"] }
 ndarray-rand = "0.14.0"
@@ -19,5 +19,10 @@ streaming-iterator = "0.1.5"
 tempfile = "3.2.0"
 thiserror = "1.0.30"
 
+[profile.bench]
+debug = true
+lto = true
+
 [profile.release]
+debug = 1
 lto = true

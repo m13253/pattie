@@ -1,1 +1,1 @@
-pub use criterion::black_box;
+pub use bencher::black_box;

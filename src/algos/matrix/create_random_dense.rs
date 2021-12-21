@@ -1,14 +1,15 @@
+use crate::structs::axis::Axis;
 use crate::structs::tensor::{COOTensor, COOTensorInner};
 use crate::structs::vec::SmallVec;
-use crate::traits::{IdxType, IntoAxis, RawParts, ValType};
+use crate::traits::{IdxType, RawParts, ValType};
 use anyhow::Result;
 use ndarray::{Array2, Array3};
 use ndarray_rand::rand_distr::{Distribution, Normal, StandardNormal};
 use ndarray_rand::RandomExt;
 use num::Float;
 
-pub fn create_random_dense_matrix<IT, VT, Ax1, Ax2>(
-    shape: (Ax1, Ax2),
+pub fn create_random_dense_matrix<IT, VT>(
+    shape: (Axis<IT>, Axis<IT>),
     mean: VT,
     std_dev: VT,
 ) -> Result<COOTensor<IT, VT>>
@@ -16,10 +17,8 @@ where
     IT: IdxType,
     VT: ValType + Float,
     StandardNormal: Distribution<VT>,
-    Ax1: IntoAxis<IT>,
-    Ax2: IntoAxis<IT>,
 {
-    let shape = [shape.0.into_axis(), shape.1.into_axis()];
+    let shape = [shape.0, shape.1];
     let shape_size = (1, shape[0].size(), shape[1].size());
     let matrix = Array3::random(shape_size, Normal::new(mean, std_dev)?);
 

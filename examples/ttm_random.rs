@@ -3,7 +3,7 @@ use clap::{App, Arg};
 use pattie::algos::matrix::create_random_dense_matrix;
 use pattie::algos::tensor::SortCOOTensor;
 use pattie::algos::tensor_matrix::COOTensorMulDenseMatrix;
-use pattie::structs::axis::axes_to_string;
+use pattie::structs::axis::{axes_to_string, AxisBuilder};
 use pattie::structs::tensor::COOTensor;
 use pattie::traits::Tensor;
 use pattie::utils::hint::black_box;
@@ -55,8 +55,10 @@ fn main() -> Result<()> {
     assert!(mode < tensor.shape().len());
     let common_axis = &tensor.shape()[mode];
     let nrows = common_axis.clone();
-    let ncols = 0..matches.value_of("rank").unwrap().parse::<u32>()?;
-    let matrix = create_random_dense_matrix::<u32, f32, _, _>((nrows, ncols), 0.0, 1.0)?;
+    let ncols = AxisBuilder::new()
+        .range(0..matches.value_of("rank").unwrap().parse::<u32>()?)
+        .build();
+    let matrix = create_random_dense_matrix::<u32, f32>((nrows, ncols), 0.0, 1.0)?;
 
     println!(
         "Random matrix shape: {}\t({} elements)",

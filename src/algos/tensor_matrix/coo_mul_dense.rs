@@ -150,7 +150,7 @@ where
             let inz_begin = fiber_offsets[i];
             let inz_end = fiber_offsets[i + 1];
             for j in inz_begin..inz_end {
-                let r = (tensor_indices[(j, common_axis_index)].clone() - common_axis.lower())
+                let r = (tensor_indices[(j, common_axis_index)] - common_axis.lower())
                     .to_usize()
                     .unwrap();
                 for k in 0..num_semi_sparse_axes {
@@ -217,9 +217,9 @@ where
                         .row(i)
                         .iter()
                         .enumerate()
-                        .filter_map(|(ax, index)| {
+                        .filter_map(|(ax, &index)| {
                             if ax != common_axis_index {
-                                Some(index.clone())
+                                Some(index)
                             } else {
                                 None
                             }

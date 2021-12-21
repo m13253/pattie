@@ -13,5 +13,5 @@ use std::fmt::{Debug, Display};
 /// }
 /// my_func(42);
 /// ```
-pub trait IdxType: Integer + NumCast + Clone + Debug + Display + Send + Sync {}
-impl<T> IdxType for T where T: Integer + NumCast + Clone + Debug + Display + Send + Sync {}
+pub trait IdxType: Integer + NumCast + Copy + Clone + Debug + Display + Send + Sync {}
+impl<T> IdxType for T where T: Integer + NumCast + Copy + Clone + Debug + Display + Send + Sync {}

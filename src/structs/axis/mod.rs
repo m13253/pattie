@@ -74,7 +74,7 @@ where
     /// ```
     #[inline]
     pub fn lower(&self) -> IT {
-        self.range.start.clone()
+        self.range.start
     }
 
     /// Returns the upper bound (exclusive) of the axis.
@@ -87,7 +87,7 @@ where
     /// ```
     #[inline]
     pub fn upper(&self) -> IT {
-        self.range.end.clone()
+        self.range.end
     }
 
     /// Returns the size of the axis.
@@ -102,9 +102,7 @@ where
     #[inline]
     pub fn size(&self) -> usize {
         if self.range.start < self.range.end {
-            (self.range.end.clone() - self.range.start.clone())
-                .to_usize()
-                .unwrap()
+            (self.range.end - self.range.start).to_usize().unwrap()
         } else {
             0
         }
@@ -155,10 +153,10 @@ where
     #[inline]
     #[must_use]
     pub fn extend(&self, other: &Self) -> Self {
-        let self_start = self.range.start.clone();
-        let self_end = self.range.end.clone();
-        let other_start = other.range.start.clone();
-        let other_end = other.range.end.clone();
+        let self_start = self.range.start;
+        let self_end = self.range.end;
+        let other_start = other.range.start;
+        let other_end = other.range.end;
         AxisBuilder::new()
             .range(self_start.min(other_start)..self_end.max(other_end))
             .build()
@@ -177,10 +175,10 @@ where
     #[inline]
     #[must_use]
     pub fn extend_with_label<'a>(&'a self, other: &Self, label: impl Into<Cow<'a, str>>) -> Self {
-        let self_start = self.range.start.clone();
-        let self_end = self.range.end.clone();
-        let other_start = other.range.start.clone();
-        let other_end = other.range.end.clone();
+        let self_start = self.range.start;
+        let self_end = self.range.end;
+        let other_start = other.range.start;
+        let other_end = other.range.end;
         AxisBuilder::new()
             .label(label)
             .range(self_start.min(other_start)..self_end.max(other_end))
@@ -204,10 +202,10 @@ where
     #[inline]
     #[must_use]
     pub fn intersect(&self, other: &Self) -> Self {
-        let self_start = self.range.start.clone();
-        let self_end = self.range.end.clone();
-        let other_start = other.range.start.clone();
-        let other_end = other.range.end.clone();
+        let self_start = self.range.start;
+        let self_end = self.range.end;
+        let other_start = other.range.start;
+        let other_end = other.range.end;
         AxisBuilder::new()
             .range(self_start.max(other_start)..self_end.min(other_end))
             .build()
@@ -234,10 +232,10 @@ where
         other: &Self,
         label: impl Into<Cow<'a, str>>,
     ) -> Self {
-        let self_start = self.range.start.clone();
-        let self_end = self.range.end.clone();
-        let other_start = other.range.start.clone();
-        let other_end = other.range.end.clone();
+        let self_start = self.range.start;
+        let self_end = self.range.end;
+        let other_start = other.range.start;
+        let other_end = other.range.end;
         AxisBuilder::new()
             .label(label)
             .range(self_start.max(other_start)..self_end.min(other_end))

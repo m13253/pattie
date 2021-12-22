@@ -3,7 +3,7 @@ use crate::structs::tensor::{COOTensor, COOTensorInner};
 use crate::structs::vec::{smallvec, SmallVec};
 use crate::traits::{IdxType, RawParts, Tensor, ValType};
 use anyhow::{anyhow, bail, Result};
-use ndarray::{aview1, Array2, ArrayView1, ArrayView2, Ix1, Ix3};
+use ndarray::{Array2, ArrayView1, ArrayView2, Ix1, Ix3};
 
 /// Task builder to multiply a `COOTensor` with a `DenseMatrix`.
 pub struct COOTensorMulDenseMatrix<'a, IT, VT>
@@ -155,10 +155,11 @@ where
             for j in inz_begin..inz_end {
                 // # Safety
                 // j < inz_end <= indices.nrows()
-                let r =
-                    unsafe { *tensor_indices.uget((j, common_axis_index)) - common_axis.lower() }
+                let r = unsafe {
+                    (*tensor_indices.uget((j, common_axis_index)) - common_axis.lower())
                         .to_usize()
-                        .unwrap();
+                        .unwrap_unchecked()
+                };
                 for k in 0..matrix_free_axis_len {
                     // # Safety
                     // i < num_semi_sparse_blocks
@@ -211,7 +212,7 @@ where
             assert_ne!(num_axes, 0);
 
             let mut last_index = None;
-            let mut semi_sparse_indices = Array2::zeros((0, num_axes - 1));
+            let mut semi_sparse_indices = Vec::new();
             let mut fiber_offsets = Vec::new();
             let mut index_buffer: SmallVec<_> = smallvec![IT::zero(); num_axes-1];
 
@@ -232,13 +233,18 @@ where
                             index_buffer.as_mut_slice(),
                         )
                     }
-                    semi_sparse_indices.push_row(aview1(&index_buffer)).unwrap();
+                    semi_sparse_indices.extend_from_slice(index_buffer.as_slice());
                     fiber_offsets.push(i);
                     last_index = Some(i);
                 }
             }
             fiber_offsets.push(num_blocks);
 
+            let semi_sparse_indices = Array2::from_shape_vec(
+                (fiber_offsets.len() - 1, num_axes - 1),
+                semi_sparse_indices,
+            )
+            .unwrap();
             (semi_sparse_indices, fiber_offsets)
         }
 

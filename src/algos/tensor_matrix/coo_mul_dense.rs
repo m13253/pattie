@@ -2,6 +2,7 @@ use crate::structs::axis::{map_axes, Axis};
 use crate::structs::tensor::{COOTensor, COOTensorInner};
 use crate::structs::vec::{smallvec, SmallVec};
 use crate::traits::{IdxType, RawParts, Tensor, ValType};
+use crate::utils::ndarray_unsafe::{uncheck_arr, uncheck_arr_mut};
 use anyhow::{anyhow, bail, Result};
 use ndarray::{Array2, ArrayView1, ArrayView2, Ix1, Ix3};
 
@@ -156,9 +157,10 @@ where
                 // # Safety
                 // j < inz_end <= indices.nrows()
                 let r = unsafe {
-                    (*tensor_indices.uget((j, common_axis_index)) - common_axis.lower())
-                        .to_usize()
-                        .unwrap_unchecked()
+                    (*uncheck_arr(&tensor_indices).get((j, common_axis_index))
+                        - common_axis.lower())
+                    .to_usize()
+                    .unwrap_unchecked()
                 };
                 for k in 0..matrix_free_axis_len {
                     // # Safety
@@ -167,9 +169,10 @@ where
                     // r < common_axis.len() == matrix_values.nrows()
                     // k < matrix_free_axis_len
                     unsafe {
-                        let value = values.uget_mut((i, k));
+                        let value = uncheck_arr_mut(&mut values).get((i, k));
                         *value = value.clone()
-                            + tensor_values.uget(j).clone() * matrix_values.uget((r, k)).clone();
+                            + uncheck_arr(&tensor_values).get(j).clone()
+                                * uncheck_arr(&matrix_values).get((r, k)).clone();
                     }
                 }
             }
@@ -265,7 +268,10 @@ where
                 // Performance concern:
                 // Why we don't use `indices.row()`?
                 // Because it creates an `ndarray::NdProducer`, which is painfully slow.
-                if i != except_axis_index && indices.uget((row_a, i)) != indices.uget((row_b, i)) {
+                if i != except_axis_index
+                    && uncheck_arr(&indices).get((row_a, i))
+                        != uncheck_arr(&indices).get((row_b, i))
+                {
                     return false;
                 }
             }
@@ -289,12 +295,12 @@ where
             for i in 0..except_axis_index {
                 index_buffer
                     .get_unchecked_mut(i)
-                    .clone_from(indices.uget((row, i)));
+                    .clone_from(uncheck_arr(&indices).get((row, i)));
             }
             for i in except_axis_index + 1..indices.ncols() {
                 index_buffer
                     .get_unchecked_mut(i - 1)
-                    .clone_from(indices.uget((row, i)));
+                    .clone_from(uncheck_arr(&indices).get((row, i)));
             }
         }
     }

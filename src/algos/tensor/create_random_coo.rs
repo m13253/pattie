@@ -28,7 +28,7 @@ where
 
     let (strides, total_size) = calc_strides(shape);
     let num_non_zeros = (total_size as f64 * density).round().to_usize().unwrap();
-    let mut index_hashtable = HashMap::<usize, ()>::new();
+    let mut index_hashtable = HashMap::<usize, ()>::with_capacity(num_non_zeros);
 
     let mut raw_parts = unsafe { tensor.raw_parts_mut() };
     let mut rng = rand::thread_rng();
@@ -39,14 +39,14 @@ where
 
     let mut indices = Array2::uninit((num_non_zeros, ndim));
     let mut index_buffer: SmallVec<IT> = smallvec![IT::zero(); ndim];
-    for i in 0..num_non_zeros {
+    for row in indices.rows_mut() {
         loop {
             for ax in 0..ndim {
                 index_buffer[ax] = index_distr[ax].sample(&mut rng);
             }
             let offset = index_to_offset(&index_buffer, shape, &strides);
             if index_hashtable.insert(offset, ()).is_none() {
-                aview1(&index_buffer).assign_to(indices.row_mut(i));
+                aview1(&index_buffer).assign_to(row);
                 break;
             }
         }
@@ -65,7 +65,7 @@ where
         let mut total_size = 1;
         for (axis, stride) in shape.iter().zip(strides.iter_mut()).rev() {
             *stride = total_size;
-            total_size = total_size.checked_mul(&axis.size()).unwrap();
+            total_size = total_size.checked_mul(&axis.len()).unwrap();
         }
         (strides, total_size)
     }

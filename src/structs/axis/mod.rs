@@ -90,17 +90,17 @@ where
         self.range.end
     }
 
-    /// Returns the size of the axis.
+    /// Returns the length of the axis.
     /// If the upper bound is not greater than the lower bound, `0` is returned.
     ///
     /// ```
     /// use pattie::structs::axis::AxisBuilder;
     ///
     /// let axis = AxisBuilder::new().range(0..10).build();
-    /// assert_eq!(axis.size(), 10);
+    /// assert_eq!(axis.len(), 10);
     /// ```
     #[inline]
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         if self.range.start < self.range.end {
             (self.range.end - self.range.start).to_usize().unwrap()
         } else {

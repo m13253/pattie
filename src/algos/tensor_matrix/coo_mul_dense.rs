@@ -144,19 +144,32 @@ where
             compute_semi_sparse_indices(&tensor.raw_parts().indices, common_axis_index);
 
         let num_semi_sparse_blocks = indices.nrows();
-        let num_semi_sparse_axes = matrix_values.ncols();
-        let mut values = Array2::<VT>::zeros((num_semi_sparse_blocks, num_semi_sparse_axes));
+        let matrix_free_axis_len = matrix_values.ncols();
+        let mut values = Array2::<VT>::zeros((num_semi_sparse_blocks, matrix_free_axis_len));
+
         for i in 0..num_semi_sparse_blocks {
-            let inz_begin = fiber_offsets[i];
-            let inz_end = fiber_offsets[i + 1];
+            // # Safety
+            // fiber_offests.len() == num_semi_sparse_blocks + 1
+            let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
+            let inz_end = *unsafe { fiber_offsets.get_unchecked(i + 1) };
             for j in inz_begin..inz_end {
-                let r = (tensor_indices[(j, common_axis_index)] - common_axis.lower())
-                    .to_usize()
-                    .unwrap();
-                for k in 0..num_semi_sparse_axes {
-                    let value = &mut values[(i, k)];
-                    *value =
-                        value.clone() + tensor_values[j].clone() * matrix_values[(r, k)].clone();
+                // # Safety
+                // j < inz_end <= indices.nrows()
+                let r =
+                    unsafe { *tensor_indices.uget((j, common_axis_index)) - common_axis.lower() }
+                        .to_usize()
+                        .unwrap();
+                for k in 0..matrix_free_axis_len {
+                    // # Safety
+                    // i < num_semi_sparse_blocks
+                    // j < indices.nrows()
+                    // r < common_axis.len() == matrix_values.nrows()
+                    // k < matrix_free_axis_len
+                    unsafe {
+                        let value = values.uget_mut((i, k));
+                        *value = value.clone()
+                            + tensor_values.uget(j).clone() * matrix_values.uget((r, k)).clone();
+                    }
                 }
             }
         }
@@ -197,42 +210,86 @@ where
             let num_axes = reference.ncols();
             assert_ne!(num_axes, 0);
 
-            let mut last_index = num_blocks;
+            let mut last_index = None;
             let mut semi_sparse_indices = Array2::zeros((0, num_axes - 1));
             let mut fiber_offsets = Vec::new();
+            let mut index_buffer: SmallVec<_> = smallvec![IT::zero(); num_axes-1];
 
             for i in 0..num_blocks {
-                if last_index == num_blocks
-                    || reference
-                        .row(last_index)
-                        .iter()
-                        .zip(reference.row(i).iter())
-                        .enumerate()
-                        .any(|(ax, (a, b))| {
-                            // Compare fiber index at row [last_index] and [i], except for the common axis.
-                            ax != common_axis_index && a != b
-                        })
+                if last_index
+                    .map(|last_index| unsafe {
+                        // # Safety
+                        // Both `last_index` and `i` are lower than `num_blocks`.
+                        !index_eq_except_axis(reference, last_index, i, common_axis_index)
+                    })
+                    .unwrap_or(true)
                 {
-                    let index_buffer = reference
-                        .row(i)
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(ax, &index)| {
-                            if ax != common_axis_index {
-                                Some(index)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<SmallVec<_>>();
+                    unsafe {
+                        copy_index_except_axis(
+                            reference,
+                            i,
+                            common_axis_index,
+                            index_buffer.as_mut_slice(),
+                        )
+                    }
                     semi_sparse_indices.push_row(aview1(&index_buffer)).unwrap();
-                    last_index = i;
                     fiber_offsets.push(i);
+                    last_index = Some(i);
                 }
             }
             fiber_offsets.push(num_blocks);
 
             (semi_sparse_indices, fiber_offsets)
+        }
+
+        /// Compare fiber index at row `row_a` and `row_b`, except for one common axis.
+        ///
+        /// # Safety
+        /// Make sure row_{a,b} < indices.nrows()
+        unsafe fn index_eq_except_axis<IT>(
+            indices: &Array2<IT>,
+            row_a: usize,
+            row_b: usize,
+            except_axis_index: usize,
+        ) -> bool
+        where
+            IT: IdxType,
+        {
+            for i in (0..indices.ncols()).rev() {
+                // Performance concern:
+                // Why we don't use `indices.row()`?
+                // Because it creates an `ndarray::NdProducer`, which is painfully slow.
+                if i != except_axis_index && indices.uget((row_a, i)) != indices.uget((row_b, i)) {
+                    return false;
+                }
+            }
+            true
+        }
+
+        /// Copy the index of the fiber at row `row` to `index_buffer`.
+        ///
+        /// # Safety
+        /// Make sure row < indices.nrows()
+        /// Make sure except_axis_index < indices.ncols()
+        /// Make sure index_buffer.len() == indices.ncols() - 1
+        unsafe fn copy_index_except_axis<IT>(
+            indices: &Array2<IT>,
+            row: usize,
+            except_axis_index: usize,
+            index_buffer: &mut [IT],
+        ) where
+            IT: IdxType,
+        {
+            for i in 0..except_axis_index {
+                index_buffer
+                    .get_unchecked_mut(i)
+                    .clone_from(indices.uget((row, i)));
+            }
+            for i in except_axis_index + 1..indices.ncols() {
+                index_buffer
+                    .get_unchecked_mut(i - 1)
+                    .clone_from(indices.uget((row, i)));
+            }
         }
     }
 }

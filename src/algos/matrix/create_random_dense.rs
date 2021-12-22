@@ -19,7 +19,7 @@ where
     StandardNormal: Distribution<VT>,
 {
     let shape = [shape.0, shape.1];
-    let shape_size = (1, shape[0].size(), shape[1].size());
+    let shape_size = (1, shape[0].len(), shape[1].len());
     let matrix = Array3::random(shape_size, Normal::new(mean, std_dev)?);
 
     let raw_parts = COOTensorInner {

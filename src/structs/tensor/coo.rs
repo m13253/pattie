@@ -65,7 +65,7 @@ where
         let indices = Array2::zeros((0, sparse_axes.len()));
         let values = ArrayD::zeros(
             iter::once(0)
-                .chain(dense_axes.iter().map(|axis| axis.size()))
+                .chain(dense_axes.iter().map(|axis| axis.len()))
                 .collect::<Vec<_>>(),
         );
         Self {

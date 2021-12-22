@@ -15,6 +15,7 @@ use ndarray::{ArrayBase, Dimension, RawData, RawDataMut};
 /// let value = unsafe { uncheck_arr(&mut array).get(1) };
 /// assert_eq!(*value, 42);
 /// ```
+#[inline]
 pub fn uncheck_arr<'a, S, D>(array: &'a ArrayBase<S, D>) -> UncheckedArray<'a, S, D>
 where
     S: RawData,
@@ -32,6 +33,7 @@ where
 /// *unsafe { uncheck_arr_mut(&mut array).get(1) } = 42;
 /// assert_eq!(array[1], 42);
 /// ```
+#[inline]
 pub fn uncheck_arr_mut<'a, S, D>(array: &'a mut ArrayBase<S, D>) -> UncheckedArrayMut<'a, S, D>
 where
     S: RawDataMut,

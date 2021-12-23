@@ -23,10 +23,10 @@ fn bench_ttm(b: &mut Bencher) {
         AxisBuilder::new().range(1..17).build(),
     );
     let sort_order = vec![
-        tensor_shape[1].clone(),
         tensor_shape[0].clone(),
         tensor_shape[2].clone(),
         tensor_shape[3].clone(),
+        tensor_shape[1].clone(),
     ];
     let mut tensor = create_random_coo::<u32, f32>(&tensor_shape, 1e-4, 0.0, 1.0).unwrap();
     let matrix = create_random_dense_matrix::<u32, f32>(matrix_shape, 0.0, 1.0).unwrap();

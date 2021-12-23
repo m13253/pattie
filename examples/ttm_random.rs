@@ -66,8 +66,11 @@ fn main() -> Result<()> {
         matrix.num_non_zeros()
     );
 
-    let sort_order = iter::once(common_axis)
-        .chain(tensor.sparse_axes().iter().filter(|&ax| ax != common_axis))
+    let sort_order = tensor
+        .sparse_axes()
+        .iter()
+        .filter(|&ax| ax != common_axis)
+        .chain(iter::once(common_axis))
         .cloned()
         .collect::<Vec<_>>();
     println!("Sorting tensor by    {}", axes_to_string(&sort_order));

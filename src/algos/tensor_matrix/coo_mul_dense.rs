@@ -73,11 +73,11 @@ where
             bail!("There must be only one common axis.");
         };
 
-        // Check if the tensor is sorted, and the leading axis is the common axis.
+        // Check if the tensor is sorted, and the trailing axis is the common axis.
         let sparse_sorting_order = tensor
             .sparse_sort_order()
             .ok_or(anyhow!("The tensor must be sorted"))?;
-        if sparse_sorting_order[0] != matrix.dense_axes()[0] {
+        if sparse_sorting_order.last() != matrix.dense_axes().first() {
             bail!("The tensor must be sorted along the common axis.");
         }
 
@@ -156,6 +156,7 @@ where
             for j in inz_begin..inz_end {
                 // # Safety
                 // j < inz_end <= indices.nrows()
+                // 0 <= r < common_axis.size()
                 let r = unsafe {
                     (*uncheck_arr(&tensor_indices).get((j, common_axis_index))
                         - common_axis.lower())

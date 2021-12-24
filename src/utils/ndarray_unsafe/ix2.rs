@@ -13,7 +13,7 @@ where
     pub unsafe fn get(self, idx: (usize, usize)) -> &'a S::Elem {
         let shape = self.array.raw_dim().into_pattern();
         let offset = idx.0 * shape.1 + idx.1;
-        &*self.array.as_ptr().offset(offset as isize)
+        &*self.array.as_ptr().add(offset)
     }
 
     /// # Safety
@@ -25,7 +25,7 @@ where
         let offset_from = from.0 * shape.1 + from.1;
         let offset_to = to.0 * shape.1 + to.1;
         slice::from_raw_parts(
-            self.array.as_ptr().offset(offset_from as isize),
+            self.array.as_ptr().add(offset_from),
             offset_to - offset_from,
         )
     }
@@ -37,7 +37,7 @@ where
     pub unsafe fn row(self, idx: usize) -> &'a [S::Elem] {
         let shape = self.array.raw_dim().into_pattern();
         let offset = idx * shape.1;
-        slice::from_raw_parts(self.array.as_ptr().offset(offset as isize), shape.1)
+        slice::from_raw_parts(self.array.as_ptr().add(offset), shape.1)
     }
 
     /// # Safety
@@ -47,10 +47,7 @@ where
     pub unsafe fn row_slice(self, from: usize, to: usize) -> ArrayView2<'a, S::Elem> {
         let shape = self.array.raw_dim().into_pattern();
         let offset = from * shape.1;
-        ArrayView2::from_shape_ptr(
-            (to - from, shape.1),
-            self.array.as_ptr().offset(offset as isize),
-        )
+        ArrayView2::from_shape_ptr((to - from, shape.1), self.array.as_ptr().add(offset))
     }
 
     /// # Safety
@@ -72,7 +69,7 @@ where
     pub unsafe fn get(self, idx: (usize, usize)) -> &'a mut S::Elem {
         let shape = self.array.raw_dim().into_pattern();
         let offset = idx.0 * shape.1 + idx.1;
-        &mut *self.array.as_mut_ptr().offset(offset as isize)
+        &mut *self.array.as_mut_ptr().add(offset)
     }
 
     /// # Safety
@@ -84,7 +81,7 @@ where
         let offset_from = from.0 * shape.1 + from.1;
         let offset_to = to.0 * shape.1 + to.1;
         slice::from_raw_parts_mut(
-            self.array.as_mut_ptr().offset(offset_from as isize),
+            self.array.as_mut_ptr().add(offset_from),
             offset_to - offset_from,
         )
     }
@@ -96,7 +93,7 @@ where
     pub unsafe fn row(self, idx: usize) -> &'a mut [S::Elem] {
         let shape = self.array.raw_dim().into_pattern();
         let offset = idx * shape.1;
-        slice::from_raw_parts_mut(self.array.as_mut_ptr().offset(offset as isize), shape.1)
+        slice::from_raw_parts_mut(self.array.as_mut_ptr().add(offset), shape.1)
     }
 
     /// # Safety
@@ -106,10 +103,7 @@ where
     pub unsafe fn row_slice(self, from: usize, to: usize) -> ArrayViewMut2<'a, S::Elem> {
         let shape = self.array.raw_dim().into_pattern();
         let offset = from * shape.1;
-        ArrayViewMut2::from_shape_ptr(
-            (to - from, shape.1),
-            self.array.as_mut_ptr().offset(offset as isize),
-        )
+        ArrayViewMut2::from_shape_ptr((to - from, shape.1), self.array.as_mut_ptr().add(offset))
     }
 
     /// # Safety

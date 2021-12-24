@@ -158,10 +158,9 @@ where
                 // j < inz_end <= indices.nrows()
                 // 0 <= r < common_axis.size()
                 let r = unsafe {
-                    (*uncheck_arr(&tensor_indices).get((j, common_axis_index))
-                        - common_axis.lower())
-                    .to_usize()
-                    .unwrap_unchecked()
+                    (*uncheck_arr(tensor_indices).get((j, common_axis_index)) - common_axis.lower())
+                        .to_usize()
+                        .unwrap_unchecked()
                 };
                 for k in 0..matrix_free_axis_len {
                     // # Safety
@@ -270,8 +269,7 @@ where
                 // Why we don't use `indices.row()`?
                 // Because it creates an `ndarray::NdProducer`, which is painfully slow.
                 if i != except_axis_index
-                    && uncheck_arr(&indices).get((row_a, i))
-                        != uncheck_arr(&indices).get((row_b, i))
+                    && uncheck_arr(indices).get((row_a, i)) != uncheck_arr(indices).get((row_b, i))
                 {
                     return false;
                 }
@@ -296,12 +294,12 @@ where
             for i in 0..except_axis_index {
                 index_buffer
                     .get_unchecked_mut(i)
-                    .clone_from(uncheck_arr(&indices).get((row, i)));
+                    .clone_from(uncheck_arr(indices).get((row, i)));
             }
             for i in except_axis_index + 1..indices.ncols() {
                 index_buffer
                     .get_unchecked_mut(i - 1)
-                    .clone_from(uncheck_arr(&indices).get((row, i)));
+                    .clone_from(uncheck_arr(indices).get((row, i)));
             }
         }
     }

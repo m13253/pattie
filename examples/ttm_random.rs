@@ -89,11 +89,12 @@ fn main() -> Result<()> {
     drop(output);
 
     const MIN_ELAPSED_TIME: Duration = Duration::from_secs(3);
+    const MIN_ROUNDS: u32 = 5;
     let mut elapsed_time = Duration::ZERO;
     let mut rounds = 0;
 
     println!("Running benchmark...");
-    while elapsed_time < MIN_ELAPSED_TIME {
+    while elapsed_time < MIN_ELAPSED_TIME || rounds < MIN_ROUNDS {
         let ttm_task = black_box(COOTensorMulDenseMatrix::new().prepare(&tensor, &matrix)?);
         let start_time = Instant::now();
         let _output = black_box(ttm_task.execute()?);

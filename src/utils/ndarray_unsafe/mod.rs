@@ -16,7 +16,7 @@ use ndarray::{ArrayBase, Dimension, RawData, RawDataMut};
 /// assert_eq!(*value, 42);
 /// ```
 #[inline]
-pub fn uncheck_arr<'a, S, D>(array: &'a ArrayBase<S, D>) -> UncheckedArray<'a, S, D>
+pub fn uncheck_arr<S, D>(array: &ArrayBase<S, D>) -> UncheckedArray<S, D>
 where
     S: RawData,
     D: Dimension,
@@ -34,7 +34,7 @@ where
 /// assert_eq!(array[1], 42);
 /// ```
 #[inline]
-pub fn uncheck_arr_mut<'a, S, D>(array: &'a mut ArrayBase<S, D>) -> UncheckedArrayMut<'a, S, D>
+pub fn uncheck_arr_mut<S, D>(array: &mut ArrayBase<S, D>) -> UncheckedArrayMut<S, D>
 where
     S: RawDataMut,
     D: Dimension,

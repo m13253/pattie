@@ -11,7 +11,7 @@ where
     /// Make sure idx < array.len()
     #[inline]
     pub unsafe fn get(self, idx: usize) -> &'a S::Elem {
-        &*self.array.as_ptr().offset(idx as isize)
+        &*self.array.as_ptr().add(idx)
     }
 
     /// # Safety
@@ -19,7 +19,7 @@ where
     /// Make sure from <= to < array.len()
     #[inline]
     pub unsafe fn slice(self, from: usize, to: usize) -> &'a [S::Elem] {
-        slice::from_raw_parts(self.array.as_ptr().offset(from as isize), to - from)
+        slice::from_raw_parts(self.array.as_ptr().add(from), to - from)
     }
 
     /// # Safety
@@ -40,7 +40,7 @@ where
     /// Make sure idx < array.len()
     #[inline]
     pub unsafe fn get(self, idx: usize) -> &'a mut S::Elem {
-        &mut *self.array.as_mut_ptr().offset(idx as isize)
+        &mut *self.array.as_mut_ptr().add(idx)
     }
 
     /// # Safety
@@ -48,7 +48,7 @@ where
     /// Make sure from <= to < array.len()
     #[inline]
     pub unsafe fn slice(self, from: usize, to: usize) -> &'a mut [S::Elem] {
-        slice::from_raw_parts_mut(self.array.as_mut_ptr().offset(from as isize), to - from)
+        slice::from_raw_parts_mut(self.array.as_mut_ptr().add(from), to - from)
     }
 
     /// # Safety

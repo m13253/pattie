@@ -51,7 +51,7 @@ where
         self.write_to_text_with_formatter(w, |value| format!("{:.6e}", value))
     }
 
-    /// Similar to [`write_to_text`], but with a custom formatter for values.
+    /// Similar to [`tensor::COOTensor::write_to_text`], but with a custom formatter for values.
     pub fn write_to_text_with_formatter<W, F>(&self, w: &mut W, formatter: F) -> io::Result<()>
     where
         W: io::Write,

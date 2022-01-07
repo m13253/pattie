@@ -106,7 +106,7 @@ where
         Self::read_from_text_with_parser(r, |value| value.parse::<VT>().ok())
     }
 
-    /// Similar to [`write_to_text`], but with a custom parser for values.
+    /// Similar to [`tensor::COOTensor::read_from_text`], but with a custom parser for values.
     pub fn read_from_text_with_parser<R, P>(
         r: &mut R,
         parser: P,

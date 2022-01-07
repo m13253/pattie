@@ -35,6 +35,6 @@ where
     /// The dimensions of the tensor.
     ///
     /// Each axis is an [`Axis`] object.
-    /// To access the lower and upper bounds of the axis, use [`Axis::lower_bound`] and [`Axis::upper_bound`].
+    /// To access the lower and upper bounds of the axis, use [`Axis::lower`] and [`Axis::upper`].
     fn shape(&self) -> &[Axis<IT>];
 }

@@ -5,6 +5,8 @@ pub mod ix2;
 
 use ndarray::{ArrayBase, Dimension, RawData, RawDataMut};
 
+/// Write an [`ndarray::Array`] to an [`UncheckedArray`], so you can use the fast methods to unsafely access its contents.
+///
 /// # Example
 /// ```
 /// use ndarray::array;
@@ -24,6 +26,8 @@ where
     UncheckedArray { array }
 }
 
+/// Write an [`ndarray::Array`] to an [`UncheckedArrayMut`], so you can use the fast methods to unsafely access its contents.
+///
 /// # Example
 /// ```
 /// use ndarray::array;
@@ -42,6 +46,7 @@ where
     UncheckedArrayMut { array }
 }
 
+/// A wrapper to [`ndarray::Array`] so you can use the fast methods to unsafely access its contents.
 #[repr(transparent)]
 pub struct UncheckedArray<'a, S, D>
 where
@@ -51,6 +56,7 @@ where
     pub array: &'a ArrayBase<S, D>,
 }
 
+/// A wrapper to [`ndarray::Array`] so you can use the fast methods to unsafely access its contents.
 #[repr(transparent)]
 pub struct UncheckedArrayMut<'a, S, D>
 where

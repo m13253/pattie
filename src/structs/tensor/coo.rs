@@ -6,6 +6,11 @@ use ndarray::{self, Array2, ArrayD, ArrayView1, ArrayViewD};
 use std::fmt::Debug;
 use std::iter;
 
+/// A COO format tensor.
+///
+/// The tensor may have zero or more non-sparse axes.
+/// If the tensor has full non-sparse axes, it is considered dense.
+/// Therefore, `COOTensor` can be used to represent dense matrices.
 #[derive(Clone, Debug)]
 pub struct COOTensor<IT, VT>
 where
@@ -15,6 +20,11 @@ where
     inner: COOTensorInner<IT, VT>,
 }
 
+/// The inner representation of a `COOTensor`.
+///
+/// This is provided to allow algorithm implementations to access the underlying data while ensuring they have the responsibility for data integrity.
+///
+/// Check [`RawParts`] for more information.
 #[derive(Clone, Debug)]
 pub struct COOTensorInner<IT, VT>
 where

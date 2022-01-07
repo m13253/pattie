@@ -38,6 +38,12 @@ where
         }
     }
 
+    /// Specify the tensor to be multiplied with the matrix.
+    ///
+    /// The last axis of the tensor's sparse_sort_order must be the same as the first axis of the matrix.
+    ///
+    /// # Todo
+    /// In the future, you will also be able to configure various parameters (e.g. GPU device ID, CPU thread count, etc.) here.
     pub fn prepare(
         mut self,
         tensor: &'a COOTensor<IT, VT>,
@@ -105,9 +111,7 @@ where
         Ok(self)
     }
 
-    /// Multiply a `COOTensor` with a `DenseMatrix`.
-    ///
-    /// This method assumes that the tensor is already sorted. Otherwise, call `prepare` first.
+    /// Perform the multiplication.
     pub fn execute(self) -> Result<COOTensor<IT, VT>>
     where
         IT: IdxType,

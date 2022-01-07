@@ -6,6 +6,8 @@ impl<'a, S> UncheckedArray<'a, S, Ix1>
 where
     S: RawData,
 {
+    /// Get a reference to the element at the given index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure idx < array.len()
@@ -14,6 +16,8 @@ where
         &*self.array.as_ptr().add(idx)
     }
 
+    /// Slice the 1D array from the given start index to the given end index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure from <= to < array.len()
@@ -22,6 +26,8 @@ where
         slice::from_raw_parts(self.array.as_ptr().add(from), to - from)
     }
 
+    /// Convert the 1D array to a slice.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     #[inline]
@@ -35,6 +41,8 @@ impl<'a, S> UncheckedArrayMut<'a, S, Ix1>
 where
     S: RawDataMut,
 {
+    /// Get a mutable reference to the element at the given index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure idx < array.len()
@@ -43,6 +51,8 @@ where
         &mut *self.array.as_mut_ptr().add(idx)
     }
 
+    /// Slice the 1D array from the given start index to the given end index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure from <= to < array.len()
@@ -51,6 +61,8 @@ where
         slice::from_raw_parts_mut(self.array.as_mut_ptr().add(from), to - from)
     }
 
+    /// Convert the 1D array to a mutable slice.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     #[inline]

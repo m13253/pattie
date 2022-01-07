@@ -20,8 +20,6 @@ where
     VT: ValType,
 {
     /// Create a new `SortCOOTensor` task builder.
-    /// Use `prepare` to specify the order of axis to sort tensors into.
-    /// After configuring the task builder, use `execute` to perform the sort.
     pub fn new() -> Self {
         Self {
             tensor: None,
@@ -29,7 +27,10 @@ where
         }
     }
 
-    /// Specify the order of axis to sort tensors into.
+    /// Specify the tensor and the order of axis to sort it into.
+    ///
+    /// # Todo
+    /// In the future, you will also be able to configure various parameters (e.g. GPU device ID, CPU thread count, etc.) here.
     #[must_use]
     pub fn prepare(mut self, tensor: &'a mut COOTensor<IT, VT>, order: &[Axis<IT>]) -> Self {
         assert_eq!(tensor.sparse_axes().len(), order.len());

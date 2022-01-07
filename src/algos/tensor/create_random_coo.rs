@@ -11,6 +11,13 @@ use ndarray_rand::RandomExt;
 use num::{CheckedMul, Float, ToPrimitive};
 use std::collections::HashMap;
 
+/// Create a random COO sparse tensor.
+///
+/// The density of non-zero elements is controlled by `density`.
+/// The tensor is filled with random values drawn from a normal distribution.
+///
+/// # Allocation
+/// This function requires `O(n)` auxiliary memory, where `n` is the number of non-zero elements.
 pub fn create_random_coo<IT, VT>(
     shape: &[Axis<IT>],
     density: f64,

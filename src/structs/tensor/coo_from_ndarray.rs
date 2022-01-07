@@ -10,6 +10,7 @@ where
     IT: IdxType,
     VT: ValType,
 {
+    /// Create a new dense `COOTensor` from a [`ndarray::Array`].
     #[inline]
     pub fn from_ndarray<S, D>(array: ArrayBase<S, D>) -> Self
     where

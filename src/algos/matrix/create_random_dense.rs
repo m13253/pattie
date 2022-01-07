@@ -8,6 +8,11 @@ use ndarray_rand::rand_distr::{Distribution, Normal, StandardNormal};
 use ndarray_rand::RandomExt;
 use num::Float;
 
+/// Create a random dense matrix.
+///
+/// The matrix is filled with random values drawn from a normal distribution.
+///
+/// Returns `Err` if the random generator fails.
 pub fn create_random_dense_matrix<IT, VT>(
     shape: (Axis<IT>, Axis<IT>),
     mean: VT,

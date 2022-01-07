@@ -1,3 +1,5 @@
+//! Algorithms related to vectors.
+
 pub mod reorder;
 
 pub use reorder::{

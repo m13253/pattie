@@ -6,6 +6,8 @@ impl<'a, S> UncheckedArray<'a, S, Ix2>
 where
     S: RawData,
 {
+    /// Get a reference to the element at the given index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure idx.0 < array.nrows() && idx.1 < array.ncols()
@@ -16,6 +18,8 @@ where
         &*self.array.as_ptr().add(offset)
     }
 
+    /// Slice the 2D array from the given start index to the given end index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure from.0 * array.ncols() + from.1 <= to.0 * array.ncols() + to.1 < array.len()
@@ -30,6 +34,8 @@ where
         )
     }
 
+    /// Slice the 2D array at the given row index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure idx < array.nrows()
@@ -40,6 +46,8 @@ where
         slice::from_raw_parts(self.array.as_ptr().add(offset), shape.1)
     }
 
+    /// Slice the 2D array from the given start row index to the given end row index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure from <= to < array.nrows()
@@ -50,6 +58,8 @@ where
         ArrayView2::from_shape_ptr((to - from, shape.1), self.array.as_ptr().add(offset))
     }
 
+    /// Convert the 2D array to a 1D slice.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     #[inline]
@@ -62,6 +72,8 @@ impl<'a, S> UncheckedArrayMut<'a, S, Ix2>
 where
     S: RawDataMut,
 {
+    /// Get a mutable reference to the element at the given index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure idx.0 < array.nrows() && idx.1 < array.ncols()
@@ -72,6 +84,8 @@ where
         &mut *self.array.as_mut_ptr().add(offset)
     }
 
+    /// Slice the 2D array from the given start index to the given end index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure from.0 * array.ncols() + from.1 <= to.0 * array.ncols() + to.1 < array.len()
@@ -86,6 +100,8 @@ where
         )
     }
 
+    /// Slice the 2D array at the given row index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure idx < array.nrows()
@@ -96,6 +112,8 @@ where
         slice::from_raw_parts_mut(self.array.as_mut_ptr().add(offset), shape.1)
     }
 
+    /// Slice the 2D array from the given start row index to the given end row index.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     /// Make sure from <= to < array.nrows()
@@ -106,6 +124,8 @@ where
         ArrayViewMut2::from_shape_ptr((to - from, shape.1), self.array.as_mut_ptr().add(offset))
     }
 
+    /// Convert the 2D array to a 1D slice.
+    ///
     /// # Safety
     /// Make sure array.is_standard_layout() == true
     #[inline]

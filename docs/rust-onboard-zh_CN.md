@@ -140,6 +140,7 @@ $ cargo run --release    # 编译并运行，打开优化
 实用工具库：
 
 * [anyhow](https://lib.rs/crates/anyhow)
+* [thiserror](https://lib.rs/crates/thiserror)
 
 ### 迭代器
 

@@ -140,6 +140,7 @@ Error handling:
 Utility libraries:
 
 * [anyhow](https://lib.rs/crates/anyhow)
+* [thiserror](https://lib.rs/crates/thiserror)
 
 ### Iterators
 

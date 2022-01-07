@@ -53,6 +53,8 @@ $ rustup update           # 更新日更版，每天都能更
 
 **不推荐** 那个名字叫 [Rust](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust) 的插件，推荐另一个叫 [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer) 的插件。
 
+推荐一个插件包叫“[Rust and Friends](https://marketplace.visualstudio.com/items?itemName=nyxiative.rust-and-friends)”。
+
 如何在 VS Code 中切换稳定版与日更版：
 
 1. 按 `Ctrl+逗号` 或 `Command+逗号`

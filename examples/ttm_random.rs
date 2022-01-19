@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::{App, Arg};
+use clap::Parser;
 use pattie::algos::matrix::CreateRandomDenseMatrix;
 use pattie::algos::tensor::SortCOOTensor;
 use pattie::algos::tensor_matrix::COOTensorMulDenseMatrix;
@@ -7,39 +7,31 @@ use pattie::structs::axis::{axes_to_string, AxisBuilder};
 use pattie::structs::tensor::COOTensor;
 use pattie::traits::Tensor;
 use pattie::utils::hint::black_box;
+use std::ffi::OsString;
 use std::fs::File;
 use std::iter;
 use std::time::{Duration, Instant};
 
-fn main() -> Result<()> {
-    let matches = App::new("COO sparse tensor I/O example")
-        .arg(
-            Arg::with_name("input")
-                .short("i")
-                .long("input")
-                .takes_value(true)
-                .required(true)
-                .help("Input tensor file"),
-        )
-        .arg(
-            Arg::with_name("mode")
-                .short("m")
-                .long("mode")
-                .takes_value(true)
-                .required(true)
-                .help("Common axis of the tensor, indexing from 0"),
-        )
-        .arg(
-            Arg::with_name("rank")
-                .short("r")
-                .long("rank")
-                .takes_value(true)
-                .required(true)
-                .help("Number of columns in the matrix"),
-        )
-        .get_matches();
+/// Tensor-Times-Matrix multiplication example
+#[derive(Debug, Parser)]
+struct Args {
+    /// Input tensor file
+    #[clap(short, long)]
+    input: OsString,
 
-    let input_filename = matches.value_of_os("input").unwrap();
+    /// Common axis of the tensor, indexing from 0
+    #[clap(short, long)]
+    mode: usize,
+
+    /// Number of columns in the matrix
+    #[clap(short, long)]
+    rank: u32,
+}
+
+fn main() -> Result<()> {
+    let args = Args::parse();
+
+    let input_filename = args.input;
     eprintln!("Reading tensor from {}", input_filename.to_string_lossy());
     let mut input_file = File::open(input_filename)?;
     let mut tensor = COOTensor::<u32, f32>::read_from_text(&mut input_file)?;
@@ -51,13 +43,11 @@ fn main() -> Result<()> {
         tensor.num_non_zeros()
     );
 
-    let mode = matches.value_of("mode").unwrap().parse::<usize>()?;
+    let mode = args.mode;
     assert!(mode < tensor.shape().len());
     let common_axis = &tensor.shape()[mode];
     let nrows = common_axis.clone();
-    let ncols = AxisBuilder::new()
-        .range(0..matches.value_of("rank").unwrap().parse::<u32>()?)
-        .build();
+    let ncols = AxisBuilder::new().range(0..args.rank).build();
     let matrix = CreateRandomDenseMatrix::<u32, f32>::new((nrows, ncols), 0.0, 1.0).execute()?;
 
     println!(

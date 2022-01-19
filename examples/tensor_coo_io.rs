@@ -1,31 +1,27 @@
 use anyhow::Result;
-use clap::{App, Arg};
+use clap::Parser;
 use pattie::structs::axis::axes_to_string;
 use pattie::structs::tensor::COOTensor;
 use pattie::traits::Tensor;
+use std::ffi::OsString;
 use std::fs::File;
 
-fn main() -> Result<()> {
-    let matches = App::new("COO sparse tensor I/O example")
-        .arg(
-            Arg::with_name("input")
-                .short("i")
-                .long("input")
-                .takes_value(true)
-                .required(true)
-                .help("Input tensor file"),
-        )
-        .arg(
-            Arg::with_name("output")
-                .short("o")
-                .long("output")
-                .takes_value(true)
-                .required(true)
-                .help("Output tensor file"),
-        )
-        .get_matches();
+/// COO sparse tensor I/O example
+#[derive(Debug, Parser)]
+struct Args {
+    /// Input tensor file
+    #[clap(short, long)]
+    input: OsString,
 
-    let input_filename = matches.value_of_os("input").unwrap();
+    /// Output tensor file
+    #[clap(short, long)]
+    output: Option<OsString>,
+}
+
+fn main() -> Result<()> {
+    let args = Args::parse();
+
+    let input_filename = args.input;
     eprintln!("Reading tensor from {}", input_filename.to_string_lossy());
     let mut input_file = File::open(input_filename)?;
     let tensor = COOTensor::<u32, f32>::read_from_text(&mut input_file)?;
@@ -37,11 +33,12 @@ fn main() -> Result<()> {
         tensor.num_non_zeros()
     );
 
-    let output_filename = matches.value_of_os("output").unwrap();
-    eprintln!("Writing tensor to {}", output_filename.to_string_lossy());
-    let mut output_file = File::create(output_filename)?;
-    tensor.write_to_text(&mut output_file)?;
-    drop(output_file);
+    if let Some(output_filename) = args.output {
+        eprintln!("Writing tensor to {}", output_filename.to_string_lossy());
+        let mut output_file = File::create(output_filename)?;
+        tensor.write_to_text(&mut output_file)?;
+        drop(output_file);
+    }
 
     Ok(())
 }

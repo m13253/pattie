@@ -122,6 +122,14 @@ $ cargo run --release    # 编译并运行，打开优化
 
 ## 教程里没提到的小知识
 
+### 启用原生 CPU 优化
+
+```bash
+export RUSTFLAGS='-C target-cpu=native'
+```
+
+类似 GCC 的 `-march=native` 参数。
+
 ### 函数式错误处理
 
 三种错误：

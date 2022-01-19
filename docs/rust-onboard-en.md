@@ -122,6 +122,14 @@ Built binaries are stored in the `./target` folder. Additionally, `cargo new` co
 
 ## Trivia absent in most tutorials
 
+### Enable native CPU optimizations
+
+```
+export RUSTFLAGS='-C target-cpu=native'
+```
+
+Similar to GCC `-march=native` option.
+
 ### Functional style error handing
 
 Three types of errors:

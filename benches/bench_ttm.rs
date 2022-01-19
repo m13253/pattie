@@ -31,13 +31,11 @@ fn bench_ttm(b: &mut Bencher) {
     let mut tensor = create_random_coo::<u32, f32>(&tensor_shape, 1e-4, 0.0, 1.0).unwrap();
     let matrix = create_random_dense_matrix::<u32, f32>(matrix_shape, 0.0, 1.0).unwrap();
 
-    let sort_task = SortCOOTensor::new().prepare(&mut tensor, &sort_order);
+    let sort_task = SortCOOTensor::new(&mut tensor, &sort_order);
     sort_task.execute();
 
     b.iter(|| {
-        let ttm_task = COOTensorMulDenseMatrix::new()
-            .prepare(&tensor, &matrix)
-            .unwrap();
-        let _output = black_box(ttm_task.execute());
+        let ttm_task = COOTensorMulDenseMatrix::new(&tensor, &matrix);
+        let _output = black_box(ttm_task.execute().unwrap());
     });
 }

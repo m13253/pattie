@@ -1,4 +1,4 @@
-use crate::structs::axis::{map_axes_unwrap, Axes, Axis};
+use crate::structs::axis::{map_axes_unwrap, Axis};
 use crate::structs::tensor::COOTensor;
 use crate::structs::vec::SmallVec;
 use crate::traits::{IdxType, RawParts, ValType};
@@ -10,8 +10,8 @@ where
     IT: IdxType,
     VT: ValType,
 {
-    tensor: Option<&'a mut COOTensor<IT, VT>>,
-    order: Option<Axes<IT>>,
+    pub tensor: &'a mut COOTensor<IT, VT>,
+    pub order: &'a [Axis<IT>],
 }
 
 impl<'a, IT, VT> SortCOOTensor<'a, IT, VT>
@@ -19,33 +19,18 @@ where
     IT: IdxType,
     VT: ValType,
 {
-    /// Create a new `SortCOOTensor` task builder.
-    pub fn new() -> Self {
-        Self {
-            tensor: None,
-            order: None,
-        }
-    }
-
-    /// Specify the tensor and the order of axis to sort it into.
-    ///
-    /// # Todo
-    /// In the future, you will also be able to configure various parameters (e.g. GPU device ID, CPU thread count, etc.) here.
-    #[must_use]
-    pub fn prepare(mut self, tensor: &'a mut COOTensor<IT, VT>, order: &[Axis<IT>]) -> Self {
-        assert_eq!(tensor.sparse_axes().len(), order.len());
-        self.tensor = Some(tensor);
-        self.order = Some(SmallVec::from(order));
-        self
+    /// Create a new `SortCOOTensor` task.
+    pub fn new(tensor: &'a mut COOTensor<IT, VT>, order: &'a [Axis<IT>]) -> Self {
+        Self { tensor, order }
     }
 
     /// Perform the sorting.
     ///
     /// The sort operation uses quick-sort algorithm, but may change in future versions.
     pub fn execute(self) {
-        let tensor = self.tensor.unwrap();
+        let tensor = self.tensor;
         let raw_parts = unsafe { tensor.raw_parts_mut() };
-        let order = self.order.as_ref().unwrap().as_slice();
+        let order = self.order;
         let order_index = map_axes_unwrap(order, &raw_parts.sparse_axes).collect::<SmallVec<_>>();
 
         // Reshape values into 2D array for more efficient indexing.
@@ -69,7 +54,7 @@ where
         );
 
         // Mark the tensor as sorted.
-        raw_parts.sparse_sort_order = self.order.unwrap();
+        raw_parts.sparse_sort_order.clone_from_slice(order);
         raw_parts.sparse_is_sorted = true;
 
         fn sort_subtensor<IT, VT>(
@@ -143,15 +128,5 @@ where
                 }
             }
         }
-    }
-}
-
-impl<'a, IT, VT> Default for SortCOOTensor<'a, IT, VT>
-where
-    IT: IdxType,
-    VT: ValType,
-{
-    fn default() -> Self {
-        Self::new()
     }
 }

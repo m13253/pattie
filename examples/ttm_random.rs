@@ -74,12 +74,10 @@ fn main() -> Result<()> {
         .cloned()
         .collect::<Vec<_>>();
     println!("Sorting tensor by    {}", axes_to_string(&sort_order));
-    SortCOOTensor::new()
-        .prepare(&mut tensor, &sort_order)
-        .execute();
+    SortCOOTensor::new(&mut tensor, &sort_order).execute();
 
     println!("Warming up...");
-    let ttm_task = black_box(COOTensorMulDenseMatrix::new().prepare(&tensor, &matrix)?);
+    let ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
     let output = black_box(ttm_task.execute()?);
     println!(
         "Output tensor shape: {}\t({} elements)",
@@ -95,7 +93,7 @@ fn main() -> Result<()> {
 
     println!("Running benchmark...");
     while elapsed_time < MIN_ELAPSED_TIME || rounds < MIN_ROUNDS {
-        let ttm_task = black_box(COOTensorMulDenseMatrix::new().prepare(&tensor, &matrix)?);
+        let ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
         let start_time = Instant::now();
         let _output = black_box(ttm_task.execute()?);
         elapsed_time += start_time.elapsed();

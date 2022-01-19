@@ -1,10 +1,10 @@
-use crate::structs::axis::{map_axes, Axis};
+use crate::structs::axis::map_axes;
 use crate::structs::tensor::{COOTensor, COOTensorInner};
 use crate::structs::vec::{smallvec, SmallVec};
 use crate::traits::{IdxType, RawParts, Tensor, ValType};
 use crate::utils::ndarray_unsafe::{uncheck_arr, uncheck_arr_mut};
 use anyhow::{anyhow, bail, Result};
-use ndarray::{Array2, ArrayView1, ArrayView2, Ix1, Ix3};
+use ndarray::{Array2, Ix1, Ix3};
 
 /// Task builder to multiply a `COOTensor` with a `DenseMatrix`.
 pub struct COOTensorMulDenseMatrix<'a, IT, VT>
@@ -12,13 +12,8 @@ where
     IT: IdxType,
     VT: ValType,
 {
-    tensor: Option<&'a COOTensor<IT, VT>>,
-    matrix: Option<&'a COOTensor<IT, VT>>,
-    tensor_values: Option<ArrayView1<'a, VT>>,
-    matrix_values: Option<ArrayView2<'a, VT>>,
-    common_axis: Option<Axis<IT>>,
-    /// The index of the common axis in `tensor.sparse_axes()`
-    common_axis_index: Option<usize>,
+    tensor: &'a COOTensor<IT, VT>,
+    matrix: &'a COOTensor<IT, VT>,
 }
 
 impl<'a, IT, VT> COOTensorMulDenseMatrix<'a, IT, VT>
@@ -27,50 +22,37 @@ where
     VT: ValType,
 {
     /// Create a new `COOTensorMulDenseMatrix` task builder.
-    pub fn new() -> Self {
-        Self {
-            tensor: None,
-            matrix: None,
-            tensor_values: None,
-            matrix_values: None,
-            common_axis: None,
-            common_axis_index: None,
-        }
+    pub fn new(tensor: &'a COOTensor<IT, VT>, matrix: &'a COOTensor<IT, VT>) -> Self {
+        Self { tensor, matrix }
     }
 
-    /// Specify the tensor to be multiplied with the matrix.
+    /// Perform the multiplication.
     ///
     /// The last axis of the tensor's sparse_sort_order must be the same as the first axis of the matrix.
-    ///
-    /// # Todo
-    /// In the future, you will also be able to configure various parameters (e.g. GPU device ID, CPU thread count, etc.) here.
-    pub fn prepare(
-        mut self,
-        tensor: &'a COOTensor<IT, VT>,
-        matrix: &'a COOTensor<IT, VT>,
-    ) -> Result<Self> {
-        self.tensor = Some(tensor);
-        self.matrix = Some(matrix);
-
+    pub fn execute(self) -> Result<COOTensor<IT, VT>>
+    where
+        IT: IdxType,
+        VT: ValType,
+    {
         // Check if the tensor is fully sparse.
-        if !tensor.dense_axes().is_empty() {
+        if !self.tensor.dense_axes().is_empty() {
             bail!("The tensor must be fully sparse.");
         }
         // Check if the matrix has 2 axes.
-        if matrix.ndim() != 2 {
+        if self.matrix.ndim() != 2 {
             bail!("The matrix must have 2 axes.");
         }
         // Check if the matrix is fully dense.
-        if !matrix.sparse_axes().is_empty() {
+        if !self.matrix.sparse_axes().is_empty() {
             bail!("The matrix must be fully dense.");
         }
 
         // Map the common axis of the tensor and the matrix.
-        let matrix_dense_axes = matrix.dense_axes();
+        let matrix_dense_axes = self.matrix.dense_axes();
         assert_eq!(matrix_dense_axes.len(), 2);
         let common_axis = &matrix_dense_axes[0];
         let matrix_dense_to_tensor_sparse =
-            map_axes(matrix.dense_axes(), tensor.sparse_axes()).collect::<SmallVec<_>>();
+            map_axes(self.matrix.dense_axes(), self.tensor.sparse_axes()).collect::<SmallVec<_>>();
         assert_eq!(matrix_dense_to_tensor_sparse.len(), 2);
         let common_axis_index = *matrix_dense_to_tensor_sparse[0]
             .as_ref()
@@ -80,55 +62,33 @@ where
         };
 
         // Check if the tensor is sorted, and the trailing axis is the common axis.
-        let sparse_sorting_order = tensor
+        let sparse_sorting_order = self
+            .tensor
             .sparse_sort_order()
             .ok_or(anyhow!("The tensor must be sorted"))?;
-        if sparse_sorting_order.last() != matrix.dense_axes().first() {
+        if sparse_sorting_order.last() != self.matrix.dense_axes().first() {
             bail!("The tensor must be sorted along the common axis.");
         }
 
-        // Store the tensor into the task builder.
-        self.tensor_values = Some(
-            tensor
-                .raw_parts()
-                .values
-                .view()
-                .into_dimensionality::<Ix1>()?,
-        );
+        let tensor_indices = &self.tensor.raw_parts().indices;
+        let tensor_values = self
+            .tensor
+            .raw_parts()
+            .values
+            .view()
+            .into_dimensionality::<Ix1>()?;
         // Extract the matrix into an ArrayView2.
-        self.matrix_values = Some(
-            matrix
-                .raw_parts()
-                .values
-                .view()
-                .into_dimensionality::<Ix3>()?
-                .index_axis_move(ndarray::Axis(0), 0),
-        );
-        self.common_axis = Some(common_axis.clone());
-        self.common_axis_index = Some(common_axis_index);
+        let matrix_values = self
+            .matrix
+            .raw_parts()
+            .values
+            .view()
+            .into_dimensionality::<Ix3>()?
+            .index_axis_move(ndarray::Axis(0), 0);
 
-        // We are done.
-        Ok(self)
-    }
-
-    /// Perform the multiplication.
-    pub fn execute(self) -> Result<COOTensor<IT, VT>>
-    where
-        IT: IdxType,
-        VT: ValType,
-    {
-        // Extract values from the task builder.
-        // They should be ready.
-        let tensor = self.tensor.unwrap();
-        let matrix = self.matrix.unwrap();
-        let tensor_indices = &tensor.raw_parts().indices;
-        let tensor_values = self.tensor_values.unwrap();
-        let matrix_values = self.matrix_values.unwrap();
-        let common_axis = self.common_axis.as_ref().unwrap();
-        let common_axis_index = self.common_axis_index.unwrap();
-
-        let matrix_shape = matrix.shape();
-        let result_shape = tensor
+        let matrix_shape = self.matrix.shape();
+        let result_shape = self
+            .tensor
             .shape()
             .iter()
             .map(|ax| {
@@ -139,14 +99,15 @@ where
                 }
             })
             .collect::<SmallVec<_>>();
-        let sparse_axes = tensor
+        let sparse_axes = self
+            .tensor
             .sparse_axes()
             .iter()
             .filter(|&ax| ax != common_axis)
             .cloned()
             .collect::<SmallVec<_>>();
         let (indices, fiber_offsets) =
-            compute_semi_sparse_indices(&tensor.raw_parts().indices, common_axis_index);
+            compute_semi_sparse_indices(&self.tensor.raw_parts().indices, common_axis_index);
 
         let num_semi_sparse_blocks = indices.nrows();
         let matrix_free_axis_len = matrix_values.ncols();
@@ -182,7 +143,8 @@ where
             }
         }
 
-        let sparse_sort_order = tensor
+        let sparse_sort_order = self
+            .tensor
             .sparse_sort_order()
             .unwrap()
             .iter()
@@ -306,15 +268,5 @@ where
                     .clone_from(uncheck_arr(indices).get((row, i)));
             }
         }
-    }
-}
-
-impl<'a, IT, VT> Default for COOTensorMulDenseMatrix<'a, IT, VT>
-where
-    IT: IdxType,
-    VT: ValType,
-{
-    fn default() -> Self {
-        Self::new()
     }
 }

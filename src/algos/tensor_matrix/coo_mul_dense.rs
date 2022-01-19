@@ -6,7 +6,7 @@ use crate::utils::ndarray_unsafe::{uncheck_arr, uncheck_arr_mut};
 use anyhow::{anyhow, bail, Result};
 use ndarray::{Array2, Ix1, Ix3};
 
-/// Task builder to multiply a `COOTensor` with a `DenseMatrix`.
+/// Multiply a `COOTensor` with a `DenseMatrix`.
 pub struct COOTensorMulDenseMatrix<'a, IT, VT>
 where
     IT: IdxType,
@@ -21,7 +21,8 @@ where
     IT: IdxType,
     VT: ValType,
 {
-    /// Create a new `COOTensorMulDenseMatrix` task builder.
+    /// Create a new `COOTensorMulDenseMatrix` task.
+    #[must_use]
     pub fn new(tensor: &'a COOTensor<IT, VT>, matrix: &'a COOTensor<IT, VT>) -> Self {
         Self { tensor, matrix }
     }

@@ -4,7 +4,7 @@ use crate::structs::vec::SmallVec;
 use crate::traits::{IdxType, RawParts, ValType};
 use ndarray::{Array2, ArrayView1, ArrayViewMut2};
 
-/// Task builder to sort the storage order of elements inside a `COOTensor`.
+/// Sort the storage order of elements inside a `COOTensor`.
 pub struct SortCOOTensor<'a, IT, VT>
 where
     IT: IdxType,
@@ -20,6 +20,7 @@ where
     VT: ValType,
 {
     /// Create a new `SortCOOTensor` task.
+    #[must_use]
     pub fn new(tensor: &'a mut COOTensor<IT, VT>, order: &'a [Axis<IT>]) -> Self {
         Self { tensor, order }
     }

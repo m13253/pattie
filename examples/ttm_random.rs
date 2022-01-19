@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{App, Arg};
-use pattie::algos::matrix::create_random_dense_matrix;
+use pattie::algos::matrix::CreateRandomDenseMatrix;
 use pattie::algos::tensor::SortCOOTensor;
 use pattie::algos::tensor_matrix::COOTensorMulDenseMatrix;
 use pattie::structs::axis::{axes_to_string, AxisBuilder};
@@ -58,7 +58,7 @@ fn main() -> Result<()> {
     let ncols = AxisBuilder::new()
         .range(0..matches.value_of("rank").unwrap().parse::<u32>()?)
         .build();
-    let matrix = create_random_dense_matrix::<u32, f32>((nrows, ncols), 0.0, 1.0)?;
+    let matrix = CreateRandomDenseMatrix::<u32, f32>::new((nrows, ncols), 0.0, 1.0).execute()?;
 
     println!(
         "Random matrix shape: {}\t({} elements)",

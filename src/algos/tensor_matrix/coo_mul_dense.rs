@@ -132,13 +132,13 @@ where
 
         // Calculate the result indices.
         let timer = start_debug_timer!(self.debug_step_timing);
-        let (result_indices, fiber_offsets) = compute_indices(&tensor_indices, common_axis_index);
+        let (result_indices, fiber_offsets) = compute_indices(tensor_indices, common_axis_index);
         print_debug_timer!(timer, "compute_indices");
 
         let timer = start_debug_timer!(self.debug_step_timing);
         let result_values = if self.multi_thread {
             compute_values_multi_thread(
-                &tensor_indices,
+                tensor_indices,
                 &tensor_values,
                 &matrix_values,
                 &result_indices,
@@ -148,7 +148,7 @@ where
             )
         } else {
             compute_values(
-                &tensor_indices,
+                tensor_indices,
                 &tensor_values,
                 &matrix_values,
                 &result_indices,
@@ -265,8 +265,8 @@ where
                         unsafe {
                             let value = uncheck_arr_mut(&mut result_values).get((i, k));
                             *value = value.clone()
-                                + uncheck_arr(&tensor_values).get(j).clone()
-                                    * uncheck_arr(&matrix_values).get((r, k)).clone();
+                                + uncheck_arr(tensor_values).get(j).clone()
+                                    * uncheck_arr(matrix_values).get((r, k)).clone();
                         }
                     }
                 }
@@ -300,37 +300,47 @@ where
                 force_send_sync::Sync::new(result_values.raw_view_mut())
             };
 
-            (0..num_fibers).into_par_iter().for_each(|i| {
-                let mut result_values = unsafe { result_values_sync.deref_into_view_mut() };
-                // # Safety
-                // fiber_offests.len() == num_fibers + 1
-                let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
-                let inz_end = *unsafe { fiber_offsets.get_unchecked(i + 1) };
-                for j in inz_begin..inz_end {
+            (0..num_fibers).into_par_iter().for_each_init(
+                || {
                     // # Safety
-                    // j < inz_end <= indices.nrows()
-                    // 0 <= r < common_axis.size()
-                    let r = unsafe {
-                        (*uncheck_arr(tensor_indices).get((j, common_axis_index))
-                            - common_axis.lower())
-                        .to_usize()
-                        .unwrap_unchecked()
-                    };
-                    for k in 0..matrix_free_axis_len {
+                    // `result_values_sync` satisfies the `Copy` trait.
+                    // Also, we are creating only one `result_value` per thread, which does not violate the aliasing rule.
+                    let result_values = unsafe { result_values_sync.deref_into_view_mut() };
+                    // If `result_values_sync` does not support `Copy`, this line would not compile.
+                    let _ = result_values_sync;
+                    result_values
+                },
+                |result_values, i| {
+                    // # Safety
+                    // fiber_offests.len() == num_fibers + 1
+                    let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
+                    let inz_end = *unsafe { fiber_offsets.get_unchecked(i + 1) };
+                    for j in inz_begin..inz_end {
                         // # Safety
-                        // i < num_fibers
-                        // j < indices.nrows()
-                        // r < common_axis.len() == matrix_values.nrows()
-                        // k < matrix_free_axis_len
-                        unsafe {
-                            let value = uncheck_arr_mut(&mut result_values).get((i, k));
-                            *value = value.clone()
-                                + uncheck_arr(&tensor_values).get(j).clone()
-                                    * uncheck_arr(&matrix_values).get((r, k)).clone();
+                        // j < inz_end <= indices.nrows()
+                        // 0 <= r < common_axis.size()
+                        let r = unsafe {
+                            (*uncheck_arr(tensor_indices).get((j, common_axis_index))
+                                - common_axis.lower())
+                            .to_usize()
+                            .unwrap_unchecked()
+                        };
+                        for k in 0..matrix_free_axis_len {
+                            // # Safety
+                            // i < num_fibers
+                            // j < indices.nrows()
+                            // r < common_axis.len() == matrix_values.nrows()
+                            // k < matrix_free_axis_len
+                            unsafe {
+                                let value = uncheck_arr_mut(result_values).get((i, k));
+                                *value = value.clone()
+                                    + uncheck_arr(tensor_values).get(j).clone()
+                                        * uncheck_arr(matrix_values).get((r, k)).clone();
+                            }
                         }
                     }
-                }
-            });
+                },
+            );
 
             result_values
         }

@@ -26,6 +26,10 @@ struct Args {
     /// Number of columns in the matrix
     #[clap(short, long)]
     rank: u32,
+
+    // Whether to time each step inside TTM
+    #[clap(long)]
+    debug_step_timing: bool,
 }
 
 fn main() -> Result<()> {
@@ -83,7 +87,8 @@ fn main() -> Result<()> {
 
     println!("Running benchmark...");
     while elapsed_time < MIN_ELAPSED_TIME || rounds < MIN_ROUNDS {
-        let ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
+        let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
+        ttm_task.debug_step_timing = args.debug_step_timing;
         let start_time = Instant::now();
         let _output = black_box(ttm_task.execute()?);
         elapsed_time += start_time.elapsed();

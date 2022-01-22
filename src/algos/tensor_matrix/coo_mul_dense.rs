@@ -1,10 +1,11 @@
-use crate::structs::axis::map_axes;
+use crate::structs::axis::{map_axes, Axis};
 use crate::structs::tensor::{COOTensor, COOTensorInner};
 use crate::structs::vec::{smallvec, SmallVec};
 use crate::traits::{IdxType, RawParts, Tensor, ValType};
 use crate::utils::ndarray_unsafe::{uncheck_arr, uncheck_arr_mut};
+use crate::{print_debug_timer, start_debug_timer};
 use anyhow::{anyhow, bail, Result};
-use ndarray::{Array2, Ix1, Ix3};
+use ndarray::{Array2, ArrayView1, ArrayView2, Ix1, Ix3};
 
 /// Multiply a `COOTensor` with a `DenseMatrix`.
 pub struct COOTensorMulDenseMatrix<'a, IT, VT>
@@ -12,8 +13,10 @@ where
     IT: IdxType,
     VT: ValType,
 {
-    tensor: &'a COOTensor<IT, VT>,
-    matrix: &'a COOTensor<IT, VT>,
+    pub tensor: &'a COOTensor<IT, VT>,
+    pub matrix: &'a COOTensor<IT, VT>,
+
+    pub debug_step_timing: bool,
 }
 
 impl<'a, IT, VT> COOTensorMulDenseMatrix<'a, IT, VT>
@@ -24,7 +27,11 @@ where
     /// Create a new `COOTensorMulDenseMatrix` task.
     #[must_use]
     pub fn new(tensor: &'a COOTensor<IT, VT>, matrix: &'a COOTensor<IT, VT>) -> Self {
-        Self { tensor, matrix }
+        Self {
+            tensor,
+            matrix,
+            debug_step_timing: false,
+        }
     }
 
     /// Perform the multiplication.
@@ -35,7 +42,7 @@ where
         IT: IdxType,
         VT: ValType,
     {
-        // Check if the tensor is fully sparse.
+        // This algorithm only solves the case where the tensor is fully sparse.
         if !self.tensor.dense_axes().is_empty() {
             bail!("The tensor must be fully sparse.");
         }
@@ -51,7 +58,7 @@ where
         // Map the common axis of the tensor and the matrix.
         let matrix_dense_axes = self.matrix.dense_axes();
         assert_eq!(matrix_dense_axes.len(), 2);
-        let common_axis = &matrix_dense_axes[0];
+        let common_axis = matrix_dense_axes.first().unwrap();
         let matrix_dense_to_tensor_sparse =
             map_axes(self.matrix.dense_axes(), self.tensor.sparse_axes()).collect::<SmallVec<_>>();
         assert_eq!(matrix_dense_to_tensor_sparse.len(), 2);
@@ -71,14 +78,17 @@ where
             bail!("The tensor must be sorted along the common axis.");
         }
 
+        // Extract the contents from the inputs.
         let tensor_indices = &self.tensor.raw_parts().indices;
+        // Reshape the tensor into an ArrayView1.
         let tensor_values = self
             .tensor
             .raw_parts()
             .values
             .view()
             .into_dimensionality::<Ix1>()?;
-        // Extract the matrix into an ArrayView2.
+        let matrix_shape = self.matrix.shape();
+        // Reshape the matrix into an ArrayView2.
         let matrix_values = self
             .matrix
             .raw_parts()
@@ -87,7 +97,7 @@ where
             .into_dimensionality::<Ix3>()?
             .index_axis_move(ndarray::Axis(0), 0);
 
-        let matrix_shape = self.matrix.shape();
+        // Create the output tensor.
         let result_shape = self
             .tensor
             .shape()
@@ -100,50 +110,13 @@ where
                 }
             })
             .collect::<SmallVec<_>>();
-        let sparse_axes = self
+        let result_sparse_axes = self
             .tensor
             .sparse_axes()
             .iter()
             .filter(|&ax| ax != common_axis)
             .cloned()
             .collect::<SmallVec<_>>();
-        let (indices, fiber_offsets) =
-            compute_semi_sparse_indices(&self.tensor.raw_parts().indices, common_axis_index);
-
-        let num_semi_sparse_blocks = indices.nrows();
-        let matrix_free_axis_len = matrix_values.ncols();
-        let mut values = Array2::<VT>::zeros((num_semi_sparse_blocks, matrix_free_axis_len));
-
-        for i in 0..num_semi_sparse_blocks {
-            // # Safety
-            // fiber_offests.len() == num_semi_sparse_blocks + 1
-            let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
-            let inz_end = *unsafe { fiber_offsets.get_unchecked(i + 1) };
-            for j in inz_begin..inz_end {
-                // # Safety
-                // j < inz_end <= indices.nrows()
-                // 0 <= r < common_axis.size()
-                let r = unsafe {
-                    (*uncheck_arr(tensor_indices).get((j, common_axis_index)) - common_axis.lower())
-                        .to_usize()
-                        .unwrap_unchecked()
-                };
-                for k in 0..matrix_free_axis_len {
-                    // # Safety
-                    // i < num_semi_sparse_blocks
-                    // j < indices.nrows()
-                    // r < common_axis.len() == matrix_values.nrows()
-                    // k < matrix_free_axis_len
-                    unsafe {
-                        let value = uncheck_arr_mut(&mut values).get((i, k));
-                        *value = value.clone()
-                            + uncheck_arr(&tensor_values).get(j).clone()
-                                * uncheck_arr(&matrix_values).get((r, k)).clone();
-                    }
-                }
-            }
-        }
-
         let sparse_sort_order = self
             .tensor
             .sparse_sort_order()
@@ -153,13 +126,30 @@ where
             .cloned()
             .collect::<SmallVec<_>>();
 
+        // Calculate the result indices.
+        let timer = start_debug_timer!(self.debug_step_timing);
+        let (result_indices, fiber_offsets) = compute_indices(&tensor_indices, common_axis_index);
+        print_debug_timer!(timer, "compute_indices");
+
+        let timer = start_debug_timer!(self.debug_step_timing);
+        let result_values = compute_values(
+            &tensor_indices,
+            &tensor_values,
+            &matrix_values,
+            &result_indices,
+            &fiber_offsets,
+            common_axis,
+            common_axis_index,
+        );
+        print_debug_timer!(timer, "compute_values");
+
         let result = COOTensorInner {
             name: None,
             shape: result_shape,
-            sparse_axes,
+            sparse_axes: result_sparse_axes,
             dense_axes: smallvec![common_axis.clone()],
-            indices,
-            values: values.into_dyn(),
+            indices: result_indices,
+            values: result_values.into_dyn(),
             sparse_is_sorted: true,
             sparse_sort_order,
         };
@@ -170,15 +160,15 @@ where
             unsafe { COOTensor::from_raw_parts(result) },
         );
 
-        fn compute_semi_sparse_indices<IT>(
-            reference: &Array2<IT>,
+        fn compute_indices<IT>(
+            tensor_indices: &Array2<IT>,
             common_axis_index: usize,
         ) -> (Array2<IT>, Vec<usize>)
         where
             IT: IdxType,
         {
-            let num_blocks = reference.nrows();
-            let num_axes = reference.ncols();
+            let num_blocks = tensor_indices.nrows();
+            let num_axes = tensor_indices.ncols();
             assert_ne!(num_axes, 0);
 
             let mut last_index = None;
@@ -191,13 +181,13 @@ where
                     .map(|last_index| unsafe {
                         // # Safety
                         // Both `last_index` and `i` are lower than `num_blocks`.
-                        !index_eq_except_axis(reference, last_index, i, common_axis_index)
+                        !index_eq_except_axis(tensor_indices, last_index, i, common_axis_index)
                     })
                     .unwrap_or(true)
                 {
                     unsafe {
                         copy_index_except_axis(
-                            reference,
+                            tensor_indices,
                             i,
                             common_axis_index,
                             index_buffer.as_mut_slice(),
@@ -210,12 +200,63 @@ where
             }
             fiber_offsets.push(num_blocks);
 
-            let semi_sparse_indices = Array2::from_shape_vec(
+            let result_indices = Array2::from_shape_vec(
                 (fiber_offsets.len() - 1, num_axes - 1),
                 semi_sparse_indices,
             )
             .unwrap();
-            (semi_sparse_indices, fiber_offsets)
+            (result_indices, fiber_offsets)
+        }
+
+        fn compute_values<IT, VT>(
+            tensor_indices: &Array2<IT>,
+            tensor_values: &ArrayView1<VT>,
+            matrix_values: &ArrayView2<VT>,
+            result_indices: &Array2<IT>,
+            fiber_offsets: &[usize],
+            common_axis: &Axis<IT>,
+            common_axis_index: usize,
+        ) -> Array2<VT>
+        where
+            IT: IdxType,
+            VT: ValType,
+        {
+            let num_fibers = result_indices.nrows();
+            let matrix_free_axis_len = matrix_values.ncols();
+            let mut result_values = Array2::<VT>::zeros((num_fibers, matrix_free_axis_len));
+
+            for i in 0..num_fibers {
+                // # Safety
+                // fiber_offests.len() == num_fibers + 1
+                let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
+                let inz_end = *unsafe { fiber_offsets.get_unchecked(i + 1) };
+                for j in inz_begin..inz_end {
+                    // # Safety
+                    // j < inz_end <= indices.nrows()
+                    // 0 <= r < common_axis.size()
+                    let r = unsafe {
+                        (*uncheck_arr(tensor_indices).get((j, common_axis_index))
+                            - common_axis.lower())
+                        .to_usize()
+                        .unwrap_unchecked()
+                    };
+                    for k in 0..matrix_free_axis_len {
+                        // # Safety
+                        // i < num_fibers
+                        // j < indices.nrows()
+                        // r < common_axis.len() == matrix_values.nrows()
+                        // k < matrix_free_axis_len
+                        unsafe {
+                            let value = uncheck_arr_mut(&mut result_values).get((i, k));
+                            *value = value.clone()
+                                + uncheck_arr(&tensor_values).get(j).clone()
+                                    * uncheck_arr(&matrix_values).get((r, k)).clone();
+                        }
+                    }
+                }
+            }
+
+            result_values
         }
 
         /// Compare fiber index at row `row_a` and `row_b`, except for one common axis.

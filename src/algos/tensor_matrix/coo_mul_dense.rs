@@ -5,7 +5,9 @@ use crate::traits::{IdxType, RawParts, Tensor, ValType};
 use crate::utils::ndarray_unsafe::{uncheck_arr, uncheck_arr_mut};
 use crate::{print_debug_timer, start_debug_timer};
 use anyhow::{anyhow, bail, Result};
+use force_send_sync;
 use ndarray::{Array2, ArrayView1, ArrayView2, Ix1, Ix3};
+use rayon::prelude::*;
 
 /// Multiply a `COOTensor` with a `DenseMatrix`.
 pub struct COOTensorMulDenseMatrix<'a, IT, VT>
@@ -16,6 +18,7 @@ where
     pub tensor: &'a COOTensor<IT, VT>,
     pub matrix: &'a COOTensor<IT, VT>,
 
+    pub multi_thread: bool,
     pub debug_step_timing: bool,
 }
 
@@ -30,6 +33,7 @@ where
         Self {
             tensor,
             matrix,
+            multi_thread: false,
             debug_step_timing: false,
         }
     }
@@ -132,15 +136,27 @@ where
         print_debug_timer!(timer, "compute_indices");
 
         let timer = start_debug_timer!(self.debug_step_timing);
-        let result_values = compute_values(
-            &tensor_indices,
-            &tensor_values,
-            &matrix_values,
-            &result_indices,
-            &fiber_offsets,
-            common_axis,
-            common_axis_index,
-        );
+        let result_values = if self.multi_thread {
+            compute_values_multi_thread(
+                &tensor_indices,
+                &tensor_values,
+                &matrix_values,
+                &result_indices,
+                &fiber_offsets,
+                common_axis,
+                common_axis_index,
+            )
+        } else {
+            compute_values(
+                &tensor_indices,
+                &tensor_values,
+                &matrix_values,
+                &result_indices,
+                &fiber_offsets,
+                common_axis,
+                common_axis_index,
+            )
+        };
         print_debug_timer!(timer, "compute_values");
 
         let result = COOTensorInner {
@@ -255,6 +271,66 @@ where
                     }
                 }
             }
+
+            result_values
+        }
+
+        fn compute_values_multi_thread<IT, VT>(
+            tensor_indices: &Array2<IT>,
+            tensor_values: &ArrayView1<VT>,
+            matrix_values: &ArrayView2<VT>,
+            result_indices: &Array2<IT>,
+            fiber_offsets: &[usize],
+            common_axis: &Axis<IT>,
+            common_axis_index: usize,
+        ) -> Array2<VT>
+        where
+            IT: IdxType,
+            VT: ValType,
+        {
+            let num_fibers = result_indices.nrows();
+            let matrix_free_axis_len = matrix_values.ncols();
+            let mut result_values = Array2::<VT>::zeros((num_fibers, matrix_free_axis_len));
+            let result_values_sync = unsafe {
+                // # Safety
+                // Each subtask only writes to its own row of `result_values`, so we ensure no data race.
+                //
+                // `raw_view_mut()` would allow creation of multiple mutable pointers to the data.
+                // `force_send_sync::Sync` is used to unsafely share the array across threads.
+                force_send_sync::Sync::new(result_values.raw_view_mut())
+            };
+
+            (0..num_fibers).into_par_iter().for_each(|i| {
+                let mut result_values = unsafe { result_values_sync.deref_into_view_mut() };
+                // # Safety
+                // fiber_offests.len() == num_fibers + 1
+                let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
+                let inz_end = *unsafe { fiber_offsets.get_unchecked(i + 1) };
+                for j in inz_begin..inz_end {
+                    // # Safety
+                    // j < inz_end <= indices.nrows()
+                    // 0 <= r < common_axis.size()
+                    let r = unsafe {
+                        (*uncheck_arr(tensor_indices).get((j, common_axis_index))
+                            - common_axis.lower())
+                        .to_usize()
+                        .unwrap_unchecked()
+                    };
+                    for k in 0..matrix_free_axis_len {
+                        // # Safety
+                        // i < num_fibers
+                        // j < indices.nrows()
+                        // r < common_axis.len() == matrix_values.nrows()
+                        // k < matrix_free_axis_len
+                        unsafe {
+                            let value = uncheck_arr_mut(&mut result_values).get((i, k));
+                            *value = value.clone()
+                                + uncheck_arr(&tensor_values).get(j).clone()
+                                    * uncheck_arr(&matrix_values).get((r, k)).clone();
+                        }
+                    }
+                }
+            });
 
             result_values
         }

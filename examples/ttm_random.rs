@@ -27,9 +27,13 @@ struct Args {
     #[clap(short, long)]
     rank: u32,
 
-    // Whether to time each step inside TTM
+    /// Whether to print time of each step inside TTM
     #[clap(long)]
     debug_step_timing: bool,
+
+    /// Enable multi-threading. Number of threads are determined by RAYON_NUM_THREADS or logical cores
+    #[clap(short = 't', long)]
+    multi_thread: bool,
 }
 
 fn main() -> Result<()> {
@@ -86,9 +90,10 @@ fn main() -> Result<()> {
     let mut rounds = 0;
 
     println!("Running benchmark...");
-    while elapsed_time < MIN_ELAPSED_TIME || rounds < MIN_ROUNDS {
+    while rounds < MIN_ROUNDS || (!args.debug_step_timing && elapsed_time < MIN_ELAPSED_TIME) {
         let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
         ttm_task.debug_step_timing = args.debug_step_timing;
+        ttm_task.multi_thread = args.multi_thread;
         let start_time = Instant::now();
         let _output = black_box(ttm_task.execute()?);
         elapsed_time += start_time.elapsed();

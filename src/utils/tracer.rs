@@ -6,6 +6,7 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io;
 use std::path::Path;
+use std::sync::atomic;
 use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
@@ -119,7 +120,9 @@ impl Tracer {
     #[must_use]
     pub fn start(&self) -> Event {
         if let Some(TracerInner { ref tx, _waiter: _ }) = self.0 {
+            atomic::compiler_fence(atomic::Ordering::SeqCst);
             let start_time = Instant::now();
+            atomic::compiler_fence(atomic::Ordering::SeqCst);
             Event(Some(EventInner { start_time, tx }))
         } else {
             Event(None)
@@ -199,7 +202,9 @@ impl Event<'_> {
     #[inline(always)]
     pub fn finish(&self, name: impl Into<Cow<'static, str>>) {
         if let Some(EventInner { start_time, tx }) = self.0 {
+            atomic::compiler_fence(atomic::Ordering::SeqCst);
             let finish_time = Instant::now();
+            atomic::compiler_fence(atomic::Ordering::SeqCst);
             tx.send(Record {
                 start_time,
                 finish_time,

@@ -5,7 +5,6 @@ use crate::traits::{IdxType, RawParts, Tensor, ValType};
 use crate::utils::ndarray_unsafe::{uncheck_arr, uncheck_arr_mut};
 use crate::{print_debug_timer, start_debug_timer};
 use anyhow::{anyhow, bail, Result};
-use force_send_sync;
 use ndarray::{Array2, ArrayView1, ArrayView2, Ix1, Ix3};
 use rayon::prelude::*;
 
@@ -291,26 +290,13 @@ where
             let num_fibers = result_indices.nrows();
             let matrix_free_axis_len = matrix_values.ncols();
             let mut result_values = Array2::<VT>::zeros((num_fibers, matrix_free_axis_len));
-            let result_values_sync = unsafe {
-                // # Safety
-                // Each subtask only writes to its own row of `result_values`, so we ensure no data race.
-                //
-                // `raw_view_mut()` would allow creation of multiple mutable pointers to the data.
-                // `force_send_sync::Sync` is used to unsafely share the array across threads.
-                force_send_sync::Sync::new(result_values.raw_view_mut())
-            };
 
-            (0..num_fibers).into_par_iter().for_each_init(
-                || {
-                    // # Safety
-                    // `result_values_sync` satisfies the `Copy` trait.
-                    // Also, we are creating only one `result_value` per thread, which does not violate the aliasing rule.
-                    let result_values = unsafe { result_values_sync.deref_into_view_mut() };
-                    // If `result_values_sync` does not support `Copy`, this line would not compile.
-                    let _ = result_values_sync;
-                    result_values
-                },
-                |result_values, i| {
+            result_values
+                .outer_iter_mut()
+                .into_par_iter()
+                .enumerate()
+                .with_max_len(num_fibers / 1024 + 1)
+                .for_each(|(i, mut result_row)| {
                     // # Safety
                     // fiber_offests.len() == num_fibers + 1
                     let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
@@ -332,15 +318,14 @@ where
                             // r < common_axis.len() == matrix_values.nrows()
                             // k < matrix_free_axis_len
                             unsafe {
-                                let value = uncheck_arr_mut(result_values).get((i, k));
+                                let value = uncheck_arr_mut(&mut result_row).get(k);
                                 *value = value.clone()
                                     + uncheck_arr(tensor_values).get(j).clone()
                                         * uncheck_arr(matrix_values).get((r, k)).clone();
                             }
                         }
                     }
-                },
-            );
+                });
 
             result_values
         }

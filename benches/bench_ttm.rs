@@ -14,8 +14,8 @@ use test::Bencher;
 fn bench_ttm(b: &mut Bencher) {
     let tensor_shape = vec![
         AxisBuilder::new().range(1..101).build(),
-        AxisBuilder::new().range(1..51).build(),
-        AxisBuilder::new().range(1..51).build(),
+        AxisBuilder::new().range(1..501).build(),
+        AxisBuilder::new().range(1..501).build(),
         AxisBuilder::new().range(1..101).build(),
     ];
     let matrix_shape = (

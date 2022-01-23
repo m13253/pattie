@@ -8,14 +8,17 @@ use pattie::algos::tensor::{CreateRandomCOOTensor, SortCOOTensor};
 use pattie::algos::tensor_matrix::COOTensorMulDenseMatrix;
 use pattie::structs::axis::AxisBuilder;
 use pattie::utils::hint::black_box;
+use rayon;
 use test::Bencher;
 
 #[bench]
 fn bench_ttm_multi_thread(b: &mut Bencher) {
+    rayon::ThreadPoolBuilder::new().build_global().unwrap_or(());
+
     let tensor_shape = vec![
         AxisBuilder::new().range(1..101).build(),
-        AxisBuilder::new().range(1..51).build(),
-        AxisBuilder::new().range(1..51).build(),
+        AxisBuilder::new().range(1..501).build(),
+        AxisBuilder::new().range(1..501).build(),
         AxisBuilder::new().range(1..101).build(),
     ];
     let matrix_shape = (

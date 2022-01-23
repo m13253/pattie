@@ -1,11 +1,10 @@
 use crossbeam_channel;
 use crossbeam_utils;
 use log::trace;
-use scopeguard::defer;
+use scopeguard;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io;
-use std::mem;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
@@ -31,17 +30,6 @@ pub struct Event<'a>(Option<EventInner<'a>>);
 #[derive(Copy, Clone, Debug)]
 struct EventInner<'a> {
     start_time: Instant,
-    tx: &'a crossbeam_channel::Sender<Record>,
-}
-
-/// An event for the performance tracer, but automatically finishes when dropped
-#[derive(Clone, Debug)]
-pub struct EventGuard<'a>(Option<EventGuardInner<'a>>);
-
-#[derive(Clone, Debug)]
-struct EventGuardInner<'a> {
-    start_time: Instant,
-    name: Cow<'static, str>,
     tx: &'a crossbeam_channel::Sender<Record>,
 }
 
@@ -138,22 +126,6 @@ impl Tracer {
         }
     }
 
-    /// Start a new event similar to `start()`, but automatically finishes when the variable's lifetime ends.
-    #[inline(always)]
-    #[must_use]
-    pub fn start_until_drop(&self, name: impl Into<Cow<'static, str>>) -> EventGuard {
-        if let Some(TracerInner { ref tx, _waiter: _ }) = self.0 {
-            let start_time = Instant::now();
-            EventGuard(Some(EventGuardInner {
-                start_time,
-                name: name.into(),
-                tx,
-            }))
-        } else {
-            EventGuard(None)
-        }
-    }
-
     fn thread_main_with_file(
         rx: crossbeam_channel::Receiver<Record>,
         finish: crossbeam_utils::sync::Unparker,
@@ -161,10 +133,8 @@ impl Tracer {
         epoch: Instant,
     ) {
         use std::io::Write;
+        scopeguard::guard(finish, |finish| finish.unpark());
 
-        defer! {
-            finish.unpark();
-        }
         write!(
             file,
             "Event name,Start time (sec),Finish time (sec),Duration (sec)\r\n"
@@ -209,7 +179,7 @@ impl Tracer {
         rx: crossbeam_channel::Receiver<Record>,
         finish: crossbeam_utils::sync::Unparker,
     ) {
-        defer! { finish.unpark(); }
+        scopeguard::guard(finish, |finish| finish.unpark());
 
         for record in rx {
             let duration = record.finish_time.duration_since(record.start_time);
@@ -230,34 +200,6 @@ impl Event<'_> {
                 start_time,
                 finish_time,
                 name: name.into(),
-            })
-            .unwrap();
-        }
-    }
-}
-
-impl EventGuard<'_> {
-    /// Finish the event early without waiting for it to drop and record the duration.
-    ///
-    /// If the event is disabled, this function does nothing.
-    #[inline(always)]
-    pub fn finish_early(self) {}
-}
-
-impl Drop for EventGuard<'_> {
-    #[inline(always)]
-    fn drop(&mut self) {
-        if let Some(EventGuardInner {
-            start_time,
-            ref mut name,
-            tx,
-        }) = self.0
-        {
-            let finish_time = Instant::now();
-            tx.send(Record {
-                start_time,
-                finish_time,
-                name: mem::take(name),
             })
             .unwrap();
         }

@@ -7,6 +7,7 @@ use crate::utils::tracer::Tracer;
 use anyhow::{anyhow, bail, Result};
 use ndarray::{Array2, ArrayView1, ArrayView2, Ix1, Ix3};
 use rayon::prelude::*;
+use scopeguard;
 
 /// Multiply a `COOTensor` with a `DenseMatrix`.
 pub struct COOTensorMulDenseMatrix<'a, IT, VT>
@@ -52,7 +53,9 @@ where
         IT: IdxType,
         VT: ValType,
     {
-        let _ = self.tracer.start_until_drop("COOTensorMulDenseMatrix");
+        scopeguard::guard(self.tracer.start(), |event| {
+            event.finish("COOTensorMulDenseMatrix")
+        });
 
         // This algorithm only solves the case where the tensor is fully sparse.
         if !self.tensor.dense_axes().is_empty() {
@@ -190,9 +193,9 @@ where
     where
         IT: IdxType,
     {
-        let _ = self
-            .tracer
-            .start_until_drop("COOTensorMulDenseMatrix::compute_indices");
+        scopeguard::guard(self.tracer.start(), |event| {
+            event.finish("COOTensorMulDenseMatrix::compute_indices")
+        });
 
         let num_blocks = tensor_indices.nrows();
         let num_axes = tensor_indices.ncols();
@@ -248,9 +251,9 @@ where
         IT: IdxType,
         VT: ValType,
     {
-        let _ = self
-            .tracer
-            .start_until_drop("COOTensorMulDenseMatrix::compute_values");
+        scopeguard::guard(self.tracer.start(), |event| {
+            event.finish("COOTensorMulDenseMatrix::compute_values")
+        });
 
         let num_fibers = result_indices.nrows();
         let matrix_free_axis_len = matrix_values.ncols();
@@ -304,9 +307,9 @@ where
         IT: IdxType,
         VT: ValType,
     {
-        let _ = self
-            .tracer
-            .start_until_drop("COOTensorMulDenseMatrix::compute_values_multi_thread");
+        scopeguard::guard(self.tracer.start(), |event| {
+            event.finish("COOTensorMulDenseMatrix::compute_values_multi_thread")
+        });
 
         let num_fibers = result_indices.nrows();
         let matrix_free_axis_len = matrix_values.ncols();

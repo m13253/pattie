@@ -7,6 +7,7 @@ use pattie::structs::axis::{axes_to_string, AxisBuilder};
 use pattie::structs::tensor::COOTensor;
 use pattie::traits::Tensor;
 use pattie::utils::hint::black_box;
+use rayon;
 use std::ffi::OsString;
 use std::fs::File;
 use std::iter;
@@ -74,7 +75,14 @@ fn main() -> Result<()> {
     println!("Sorting tensor by    {}", axes_to_string(&sort_order));
     SortCOOTensor::new(&mut tensor, &sort_order).execute();
 
-    println!("Warming up...");
+    println!(
+        "Warming up... Number of threads: {}",
+        if args.multi_thread {
+            rayon::current_num_threads()
+        } else {
+            1
+        }
+    );
     let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
     ttm_task.multi_thread = args.multi_thread;
     let output = black_box(ttm_task.execute()?);

@@ -59,7 +59,7 @@ where
         let is_axis_dense: SmallVec<bool> = smallvec![false; ndim];
         let mut tensor = COOTensor::<IT, VT>::zeros(self.shape, &is_axis_dense);
 
-        let (strides, total_size) = calc_strides(self.shape);
+        let (strides, total_size) = Self::calc_strides(self.shape);
         let num_non_zeros = (total_size as f64 * self.density)
             .round()
             .to_usize()
@@ -81,7 +81,7 @@ where
                 for ax in 0..ndim {
                     index_buffer[ax] = index_distr[ax].sample(&mut rng);
                 }
-                let offset = index_to_offset(&index_buffer, self.shape, &strides);
+                let offset = Self::index_to_offset(&index_buffer, self.shape, &strides);
                 if index_hashtable.insert(offset, ()).is_none() {
                     aview1(&index_buffer).assign_to(row);
                     break;
@@ -93,37 +93,37 @@ where
         raw_parts.indices = indices;
         raw_parts.values =
             Array1::random(num_non_zeros, Normal::new(self.mean, self.std_dev)?).into_dyn();
-        return Ok(tensor);
+        Ok(tensor)
+    }
 
-        fn calc_strides<IT>(shape: &[Axis<IT>]) -> (SmallVec<usize>, usize)
-        where
-            IT: IdxType,
-        {
-            let mut strides = smallvec![0; shape.len()];
-            let mut total_size = 1;
-            for (axis, stride) in shape.iter().zip(strides.iter_mut()).rev() {
-                *stride = total_size;
-                total_size = total_size.checked_mul(&axis.len()).unwrap();
-            }
-            (strides, total_size)
+    fn calc_strides(shape: &[Axis<IT>]) -> (SmallVec<usize>, usize)
+    where
+        IT: IdxType,
+    {
+        let mut strides = smallvec![0; shape.len()];
+        let mut total_size = 1;
+        for (axis, stride) in shape.iter().zip(strides.iter_mut()).rev() {
+            *stride = total_size;
+            total_size = total_size.checked_mul(&axis.len()).unwrap();
         }
+        (strides, total_size)
+    }
 
-        fn index_to_offset<IT>(index: &[IT], shape: &[Axis<IT>], strides: &[usize]) -> usize
-        where
-            IT: IdxType,
-        {
-            index
-                .iter()
-                .zip(shape.iter())
-                .zip(strides.iter())
-                .map(|((&idx, axis), &stride)| {
-                    (idx - axis.lower())
-                        .to_usize()
-                        .unwrap()
-                        .checked_mul(stride)
-                        .unwrap()
-                })
-                .product()
-        }
+    fn index_to_offset(index: &[IT], shape: &[Axis<IT>], strides: &[usize]) -> usize
+    where
+        IT: IdxType,
+    {
+        index
+            .iter()
+            .zip(shape.iter())
+            .zip(strides.iter())
+            .map(|((&idx, axis), &stride)| {
+                (idx - axis.lower())
+                    .to_usize()
+                    .unwrap()
+                    .checked_mul(stride)
+                    .unwrap()
+            })
+            .product()
     }
 }

@@ -7,8 +7,8 @@ use ndarray::{Array2, ArrayView1, ArrayViewMut2};
 /// Sort the storage order of elements inside a `COOTensor`.
 pub struct SortCOOTensor<'a, IT, VT>
 where
-    IT: IdxType,
-    VT: ValType,
+    IT: 'a + IdxType,
+    VT: 'a + ValType,
 {
     pub tensor: &'a mut COOTensor<IT, VT>,
     pub order: &'a [Axis<IT>],
@@ -16,8 +16,8 @@ where
 
 impl<'a, IT, VT> SortCOOTensor<'a, IT, VT>
 where
-    IT: IdxType,
-    VT: ValType,
+    IT: 'a + IdxType,
+    VT: 'a + ValType,
 {
     /// Create a new `SortCOOTensor` task.
     #[must_use]
@@ -46,7 +46,7 @@ where
             .unwrap();
 
         // Call the quick sort algorithm.
-        sort_subtensor(
+        Self::sort_subtensor(
             &mut raw_parts.indices,
             &mut values_2d,
             &order_index,
@@ -57,76 +57,62 @@ where
         // Mark the tensor as sorted.
         raw_parts.sparse_sort_order.clone_from_slice(order);
         raw_parts.sparse_is_sorted = true;
+    }
 
-        fn sort_subtensor<IT, VT>(
-            indices: &mut Array2<IT>,
-            values: &mut ArrayViewMut2<VT>,
-            order: &[usize],
-            from: usize,
-            to: usize,
-        ) where
-            IT: IdxType,
-            VT: ValType,
-        {
-            if to - from < 2 {
-                return;
-            }
-            let mut pivot = (from + to) / 2;
-            let mut i = from;
-            let mut j = to - 1;
-            loop {
-                while index_less_than(order, &indices.row(i), &indices.row(pivot)) {
-                    i += 1;
-                }
-                while index_less_than(order, &indices.row(j), &indices.row(pivot)) {
-                    j -= 1;
-                }
-                if i >= j {
-                    break;
-                }
-                swap_block(indices, values, i, j);
-                if i == pivot {
-                    pivot = j;
-                } else if j == pivot {
-                    pivot = i;
-                }
+    fn sort_subtensor(
+        indices: &mut Array2<IT>,
+        values: &mut ArrayViewMut2<VT>,
+        order: &[usize],
+        from: usize,
+        to: usize,
+    ) {
+        if to - from < 2 {
+            return;
+        }
+        let mut pivot = (from + to) / 2;
+        let mut i = from;
+        let mut j = to - 1;
+        loop {
+            while Self::index_less_than(order, &indices.row(i), &indices.row(pivot)) {
                 i += 1;
+            }
+            while Self::index_less_than(order, &indices.row(j), &indices.row(pivot)) {
                 j -= 1;
             }
-            sort_subtensor(indices, values, order, from, j);
-            sort_subtensor(indices, values, order, i, to);
-        }
-
-        fn index_less_than<IT>(order: &[usize], a: &ArrayView1<IT>, b: &ArrayView1<IT>) -> bool
-        where
-            IT: IdxType,
-        {
-            for &i in order.iter() {
-                if a[i] >= b[i] {
-                    return false;
-                }
+            if i >= j {
+                break;
             }
-            true
-        }
-
-        fn swap_block<IT, VT>(
-            indices: &mut Array2<IT>,
-            values: &mut ArrayViewMut2<VT>,
-            a: usize,
-            b: usize,
-        ) where
-            IT: IdxType,
-            VT: ValType,
-        {
-            for offset in 0..indices.ncols() {
-                unsafe {
-                    indices.uswap((a, offset), (b, offset));
-                }
+            Self::swap_block(indices, values, i, j);
+            if i == pivot {
+                pivot = j;
+            } else if j == pivot {
+                pivot = i;
             }
-            for offset in 0..values.ncols() {
-                unsafe {
-                    values.uswap((a, offset), (b, offset));
-                }
+            i += 1;
+            j -= 1;
+        }
+        Self::sort_subtensor(indices, values, order, from, j);
+        Self::sort_subtensor(indices, values, order, i, to);
+    }
+
+    fn index_less_than(order: &[usize], a: &ArrayView1<IT>, b: &ArrayView1<IT>) -> bool {
+        for &i in order.iter() {
+            if a[i] >= b[i] {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn swap_block(indices: &mut Array2<IT>, values: &mut ArrayViewMut2<VT>, a: usize, b: usize) {
+        for offset in 0..indices.ncols() {
+            unsafe {
+                indices.uswap((a, offset), (b, offset));
+            }
+        }
+        for offset in 0..values.ncols() {
+            unsafe {
+                values.uswap((a, offset), (b, offset));
             }
         }
     }

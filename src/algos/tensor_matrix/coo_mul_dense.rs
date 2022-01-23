@@ -233,6 +233,7 @@ where
         (result_indices, fiber_offsets)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compute_values(
         &self,
         tensor_indices: &Array2<IT>,
@@ -288,6 +289,7 @@ where
         result_values
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compute_values_multi_thread(
         &self,
         tensor_indices: &Array2<IT>,

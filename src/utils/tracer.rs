@@ -1,10 +1,13 @@
 use crossbeam_channel;
+use crossbeam_utils;
 use log::trace;
+use scopeguard::defer;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io;
 use std::mem;
 use std::path::Path;
+use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
 
@@ -12,12 +15,13 @@ const DEFAULT_EVENT_BUFFER_SIZE: usize = 256;
 const DEFAULT_FILE_BUFFER_SIZE: usize = 8192;
 
 /// A performance tracer
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Tracer(Option<TracerInner>);
 
 #[derive(Clone, Debug)]
 struct TracerInner {
     tx: crossbeam_channel::Sender<Record>,
+    _waiter: Arc<ThreadWaiter>,
 }
 
 /// An event for the performance tracer
@@ -48,6 +52,11 @@ struct Record {
     name: Cow<'static, str>,
 }
 
+#[derive(Debug)]
+struct ThreadWaiter {
+    parker: crossbeam_utils::sync::Parker,
+}
+
 impl Tracer {
     /// Create a disabled tracer that does nothing.
     #[inline]
@@ -62,10 +71,15 @@ impl Tracer {
     pub fn new_to_file(file: File) -> Result<Self, io::Error> {
         let epoch = Instant::now();
         let (tx, rx) = crossbeam_channel::bounded(DEFAULT_EVENT_BUFFER_SIZE);
+        let parker = crossbeam_utils::sync::Parker::new();
+        let unparker = parker.unparker().clone();
         thread::Builder::new()
             .name("tracer".to_string())
-            .spawn(move || Self::thread_main_with_file(rx, file, epoch))?;
-        Ok(Self(Some(TracerInner { tx })))
+            .spawn(move || Self::thread_main_with_file(rx, unparker, file, epoch))?;
+        Ok(Self(Some(TracerInner {
+            tx,
+            _waiter: Arc::new(ThreadWaiter { parker }),
+        })))
     }
 
     /// Create a tracer that records events to a file.
@@ -79,10 +93,15 @@ impl Tracer {
         let epoch = Instant::now();
         let file = File::create(filename)?;
         let (tx, rx) = crossbeam_channel::bounded(DEFAULT_EVENT_BUFFER_SIZE);
+        let parker = crossbeam_utils::sync::Parker::new();
+        let unparker = parker.unparker().clone();
         thread::Builder::new()
             .name("tracer".to_string())
-            .spawn(move || Self::thread_main_with_file(rx, file, epoch))?;
-        Ok(Self(Some(TracerInner { tx })))
+            .spawn(move || Self::thread_main_with_file(rx, unparker, file, epoch))?;
+        Ok(Self(Some(TracerInner {
+            tx,
+            _waiter: Arc::new(ThreadWaiter { parker }),
+        })))
     }
 
     /// Create a tracer that records events to the standard output.
@@ -91,10 +110,15 @@ impl Tracer {
     #[inline]
     pub fn new_to_stdout() -> Result<Self, io::Error> {
         let (tx, rx) = crossbeam_channel::bounded(DEFAULT_EVENT_BUFFER_SIZE);
+        let parker = crossbeam_utils::sync::Parker::new();
+        let unparker = parker.unparker().clone();
         thread::Builder::new()
             .name("tracer".to_string())
-            .spawn(move || Self::thread_main_with_stdout(rx))?;
-        Ok(Self(Some(TracerInner { tx })))
+            .spawn(move || Self::thread_main_with_stdout(rx, unparker))?;
+        Ok(Self(Some(TracerInner {
+            tx,
+            _waiter: Arc::new(ThreadWaiter { parker }),
+        })))
     }
 
     /// Start a new event.
@@ -106,7 +130,7 @@ impl Tracer {
     #[inline(always)]
     #[must_use]
     pub fn start(&self) -> Event {
-        if let Some(TracerInner { ref tx }) = self.0 {
+        if let Some(TracerInner { ref tx, _waiter: _ }) = self.0 {
             let start_time = Instant::now();
             Event(Some(EventInner { start_time, tx }))
         } else {
@@ -118,7 +142,7 @@ impl Tracer {
     #[inline(always)]
     #[must_use]
     pub fn start_until_drop(&self, name: impl Into<Cow<'static, str>>) -> EventGuard {
-        if let Some(TracerInner { ref tx }) = self.0 {
+        if let Some(TracerInner { ref tx, _waiter: _ }) = self.0 {
             let start_time = Instant::now();
             EventGuard(Some(EventGuardInner {
                 start_time,
@@ -132,11 +156,15 @@ impl Tracer {
 
     fn thread_main_with_file(
         rx: crossbeam_channel::Receiver<Record>,
+        finish: crossbeam_utils::sync::Unparker,
         mut file: File,
         epoch: Instant,
     ) {
         use std::io::Write;
 
+        defer! {
+            finish.unpark();
+        }
         write!(
             file,
             "Event name,Start time (sec),Finish time (sec),Duration (sec)\r\n"
@@ -144,7 +172,7 @@ impl Tracer {
         .unwrap();
         let mut file = io::BufWriter::with_capacity(DEFAULT_FILE_BUFFER_SIZE, file);
 
-        while let Ok(record) = rx.recv() {
+        for record in rx {
             let name = record.name.as_ref();
             let start = record.start_time.duration_since(epoch);
             let finish = record.finish_time.duration_since(epoch);
@@ -177,8 +205,13 @@ impl Tracer {
         }
     }
 
-    fn thread_main_with_stdout(rx: crossbeam_channel::Receiver<Record>) {
-        while let Ok(record) = rx.recv() {
+    fn thread_main_with_stdout(
+        rx: crossbeam_channel::Receiver<Record>,
+        finish: crossbeam_utils::sync::Unparker,
+    ) {
+        defer! { finish.unpark(); }
+
+        for record in rx {
             let duration = record.finish_time.duration_since(record.start_time);
             trace!(target: "Event", "({}) {}.{:09} seconds", record.name, duration.as_secs(), duration.subsec_nanos());
         }
@@ -231,9 +264,9 @@ impl Drop for EventGuard<'_> {
     }
 }
 
-impl Default for Tracer {
-    #[inline]
-    fn default() -> Self {
-        Self(None)
+impl Drop for ThreadWaiter {
+    #[inline(always)]
+    fn drop(&mut self) {
+        self.parker.park();
     }
 }

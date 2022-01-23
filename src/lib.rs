@@ -8,7 +8,6 @@
 
 pub mod algos;
 pub mod io;
-pub mod macros;
 pub mod structs;
 pub mod traits;
 pub mod utils;

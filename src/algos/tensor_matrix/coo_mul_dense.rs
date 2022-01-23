@@ -3,7 +3,7 @@ use crate::structs::tensor::{COOTensor, COOTensorInner};
 use crate::structs::vec::{smallvec, SmallVec};
 use crate::traits::{IdxType, RawParts, Tensor, ValType};
 use crate::utils::ndarray_unsafe::{uncheck_arr, uncheck_arr_mut};
-use crate::{print_debug_timer, start_debug_timer};
+use crate::utils::tracer::Tracer;
 use anyhow::{anyhow, bail, Result};
 use ndarray::{Array2, ArrayView1, ArrayView2, Ix1, Ix3};
 use rayon::prelude::*;
@@ -17,8 +17,8 @@ where
     pub tensor: &'a COOTensor<IT, VT>,
     pub matrix: &'a COOTensor<IT, VT>,
 
+    pub tracer: Tracer,
     pub multi_thread: bool,
-    pub debug_step_timing: bool,
 }
 
 impl<'a, IT, VT> COOTensorMulDenseMatrix<'a, IT, VT>
@@ -32,9 +32,16 @@ where
         Self {
             tensor,
             matrix,
+            tracer: Tracer::new_dummy(),
             multi_thread: false,
-            debug_step_timing: false,
         }
+    }
+
+    /// Enable performance tracing.
+    #[must_use]
+    pub fn trace(mut self, tracer: &Tracer) -> Self {
+        self.tracer.clone_from(tracer);
+        self
     }
 
     /// Perform the multiplication.
@@ -45,6 +52,8 @@ where
         IT: IdxType,
         VT: ValType,
     {
+        let _ = self.tracer.start_until_drop("COOTensorMulDenseMatrix");
+
         // This algorithm only solves the case where the tensor is fully sparse.
         if !self.tensor.dense_axes().is_empty() {
             bail!("The tensor must be fully sparse.");
@@ -130,13 +139,11 @@ where
             .collect::<SmallVec<_>>();
 
         // Calculate the result indices.
-        let timer = start_debug_timer!(self.debug_step_timing);
-        let (result_indices, fiber_offsets) = compute_indices(tensor_indices, common_axis_index);
-        print_debug_timer!(timer, "compute_indices");
+        let (result_indices, fiber_offsets) =
+            self.compute_indices(tensor_indices, common_axis_index);
 
-        let timer = start_debug_timer!(self.debug_step_timing);
         let result_values = if self.multi_thread {
-            compute_values_multi_thread(
+            self.compute_values_multi_thread(
                 tensor_indices,
                 &tensor_values,
                 &matrix_values,
@@ -146,7 +153,7 @@ where
                 common_axis_index,
             )
         } else {
-            compute_values(
+            self.compute_values(
                 tensor_indices,
                 &tensor_values,
                 &matrix_values,
@@ -156,7 +163,6 @@ where
                 common_axis_index,
             )
         };
-        print_debug_timer!(timer, "compute_values");
 
         let result = COOTensorInner {
             name: None,
@@ -169,78 +175,147 @@ where
             sparse_sort_order,
         };
 
-        return Ok(
+        Ok(
             // # Safety
             // We make sure the tensor is in valid state.
             unsafe { COOTensor::from_raw_parts(result) },
-        );
+        )
+    }
 
-        fn compute_indices<IT>(
-            tensor_indices: &Array2<IT>,
-            common_axis_index: usize,
-        ) -> (Array2<IT>, Vec<usize>)
-        where
-            IT: IdxType,
-        {
-            let num_blocks = tensor_indices.nrows();
-            let num_axes = tensor_indices.ncols();
-            assert_ne!(num_axes, 0);
+    fn compute_indices(
+        &self,
+        tensor_indices: &Array2<IT>,
+        common_axis_index: usize,
+    ) -> (Array2<IT>, Vec<usize>)
+    where
+        IT: IdxType,
+    {
+        let _ = self
+            .tracer
+            .start_until_drop("COOTensorMulDenseMatrix::compute_indices");
 
-            let mut last_index = None;
-            let mut semi_sparse_indices = Vec::new();
-            let mut fiber_offsets = Vec::new();
-            let mut index_buffer: SmallVec<_> = smallvec![IT::zero(); num_axes-1];
+        let num_blocks = tensor_indices.nrows();
+        let num_axes = tensor_indices.ncols();
+        assert_ne!(num_axes, 0);
 
-            for i in 0..num_blocks {
-                if last_index
-                    .map(|last_index| unsafe {
-                        // # Safety
-                        // Both `last_index` and `i` are lower than `num_blocks`.
-                        !index_eq_except_axis(tensor_indices, last_index, i, common_axis_index)
-                    })
-                    .unwrap_or(true)
-                {
+        let mut last_index = None;
+        let mut semi_sparse_indices = Vec::new();
+        let mut fiber_offsets = Vec::new();
+        let mut index_buffer: SmallVec<_> = smallvec![IT::zero(); num_axes-1];
+
+        for i in 0..num_blocks {
+            if last_index
+                .map(|last_index| unsafe {
+                    // # Safety
+                    // Both `last_index` and `i` are lower than `num_blocks`.
+                    !self.index_eq_except_axis(tensor_indices, last_index, i, common_axis_index)
+                })
+                .unwrap_or(true)
+            {
+                unsafe {
+                    self.copy_index_except_axis(
+                        tensor_indices,
+                        i,
+                        common_axis_index,
+                        index_buffer.as_mut_slice(),
+                    )
+                }
+                semi_sparse_indices.extend_from_slice(index_buffer.as_slice());
+                fiber_offsets.push(i);
+                last_index = Some(i);
+            }
+        }
+        fiber_offsets.push(num_blocks);
+
+        let result_indices =
+            Array2::from_shape_vec((fiber_offsets.len() - 1, num_axes - 1), semi_sparse_indices)
+                .unwrap();
+        (result_indices, fiber_offsets)
+    }
+
+    fn compute_values(
+        &self,
+        tensor_indices: &Array2<IT>,
+        tensor_values: &ArrayView1<VT>,
+        matrix_values: &ArrayView2<VT>,
+        result_indices: &Array2<IT>,
+        fiber_offsets: &[usize],
+        common_axis: &Axis<IT>,
+        common_axis_index: usize,
+    ) -> Array2<VT>
+    where
+        IT: IdxType,
+        VT: ValType,
+    {
+        let _ = self
+            .tracer
+            .start_until_drop("COOTensorMulDenseMatrix::compute_values");
+
+        let num_fibers = result_indices.nrows();
+        let matrix_free_axis_len = matrix_values.ncols();
+        let mut result_values = Array2::<VT>::zeros((num_fibers, matrix_free_axis_len));
+
+        for i in 0..num_fibers {
+            // # Safety
+            // fiber_offests.len() == num_fibers + 1
+            let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
+            let inz_end = *unsafe { fiber_offsets.get_unchecked(i + 1) };
+            for j in inz_begin..inz_end {
+                // # Safety
+                // j < inz_end <= indices.nrows()
+                // 0 <= r < common_axis.size()
+                let r = unsafe {
+                    (*uncheck_arr(tensor_indices).get((j, common_axis_index)) - common_axis.lower())
+                        .to_usize()
+                        .unwrap_unchecked()
+                };
+                for k in 0..matrix_free_axis_len {
+                    // # Safety
+                    // i < num_fibers
+                    // j < indices.nrows()
+                    // r < common_axis.len() == matrix_values.nrows()
+                    // k < matrix_free_axis_len
                     unsafe {
-                        copy_index_except_axis(
-                            tensor_indices,
-                            i,
-                            common_axis_index,
-                            index_buffer.as_mut_slice(),
-                        )
+                        let value = uncheck_arr_mut(&mut result_values).get((i, k));
+                        *value = value.clone()
+                            + uncheck_arr(tensor_values).get(j).clone()
+                                * uncheck_arr(matrix_values).get((r, k)).clone();
                     }
-                    semi_sparse_indices.extend_from_slice(index_buffer.as_slice());
-                    fiber_offsets.push(i);
-                    last_index = Some(i);
                 }
             }
-            fiber_offsets.push(num_blocks);
-
-            let result_indices = Array2::from_shape_vec(
-                (fiber_offsets.len() - 1, num_axes - 1),
-                semi_sparse_indices,
-            )
-            .unwrap();
-            (result_indices, fiber_offsets)
         }
 
-        fn compute_values<IT, VT>(
-            tensor_indices: &Array2<IT>,
-            tensor_values: &ArrayView1<VT>,
-            matrix_values: &ArrayView2<VT>,
-            result_indices: &Array2<IT>,
-            fiber_offsets: &[usize],
-            common_axis: &Axis<IT>,
-            common_axis_index: usize,
-        ) -> Array2<VT>
-        where
-            IT: IdxType,
-            VT: ValType,
-        {
-            let num_fibers = result_indices.nrows();
-            let matrix_free_axis_len = matrix_values.ncols();
-            let mut result_values = Array2::<VT>::zeros((num_fibers, matrix_free_axis_len));
+        result_values
+    }
 
-            for i in 0..num_fibers {
+    fn compute_values_multi_thread(
+        &self,
+        tensor_indices: &Array2<IT>,
+        tensor_values: &ArrayView1<VT>,
+        matrix_values: &ArrayView2<VT>,
+        result_indices: &Array2<IT>,
+        fiber_offsets: &[usize],
+        common_axis: &Axis<IT>,
+        common_axis_index: usize,
+    ) -> Array2<VT>
+    where
+        IT: IdxType,
+        VT: ValType,
+    {
+        let _ = self
+            .tracer
+            .start_until_drop("COOTensorMulDenseMatrix::compute_values_multi_thread");
+
+        let num_fibers = result_indices.nrows();
+        let matrix_free_axis_len = matrix_values.ncols();
+        let mut result_values = Array2::<VT>::zeros((num_fibers, matrix_free_axis_len));
+
+        result_values
+            .outer_iter_mut()
+            .into_par_iter()
+            .enumerate()
+            .with_max_len(num_fibers / 1024 + 1)
+            .for_each(|(i, mut result_row)| {
                 // # Safety
                 // fiber_offests.len() == num_fibers + 1
                 let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
@@ -262,124 +337,69 @@ where
                         // r < common_axis.len() == matrix_values.nrows()
                         // k < matrix_free_axis_len
                         unsafe {
-                            let value = uncheck_arr_mut(&mut result_values).get((i, k));
+                            let value = uncheck_arr_mut(&mut result_row).get(k);
                             *value = value.clone()
                                 + uncheck_arr(tensor_values).get(j).clone()
                                     * uncheck_arr(matrix_values).get((r, k)).clone();
                         }
                     }
                 }
-            }
+            });
 
-            result_values
+        result_values
+    }
+
+    /// Compare fiber index at row `row_a` and `row_b`, except for one common axis.
+    ///
+    /// # Safety
+    /// Make sure row_{a,b} < indices.nrows()
+    unsafe fn index_eq_except_axis(
+        &self,
+        indices: &Array2<IT>,
+        row_a: usize,
+        row_b: usize,
+        except_axis_index: usize,
+    ) -> bool
+    where
+        IT: IdxType,
+    {
+        for i in (0..indices.ncols()).rev() {
+            // Performance concern:
+            // Why we don't use `indices.row()`?
+            // Because it creates an `ndarray::NdProducer`, which is painfully slow.
+            if i != except_axis_index
+                && uncheck_arr(indices).get((row_a, i)) != uncheck_arr(indices).get((row_b, i))
+            {
+                return false;
+            }
         }
+        true
+    }
 
-        fn compute_values_multi_thread<IT, VT>(
-            tensor_indices: &Array2<IT>,
-            tensor_values: &ArrayView1<VT>,
-            matrix_values: &ArrayView2<VT>,
-            result_indices: &Array2<IT>,
-            fiber_offsets: &[usize],
-            common_axis: &Axis<IT>,
-            common_axis_index: usize,
-        ) -> Array2<VT>
-        where
-            IT: IdxType,
-            VT: ValType,
-        {
-            let num_fibers = result_indices.nrows();
-            let matrix_free_axis_len = matrix_values.ncols();
-            let mut result_values = Array2::<VT>::zeros((num_fibers, matrix_free_axis_len));
-
-            result_values
-                .outer_iter_mut()
-                .into_par_iter()
-                .enumerate()
-                .with_max_len(num_fibers / 1024 + 1)
-                .for_each(|(i, mut result_row)| {
-                    // # Safety
-                    // fiber_offests.len() == num_fibers + 1
-                    let inz_begin = *unsafe { fiber_offsets.get_unchecked(i) };
-                    let inz_end = *unsafe { fiber_offsets.get_unchecked(i + 1) };
-                    for j in inz_begin..inz_end {
-                        // # Safety
-                        // j < inz_end <= indices.nrows()
-                        // 0 <= r < common_axis.size()
-                        let r = unsafe {
-                            (*uncheck_arr(tensor_indices).get((j, common_axis_index))
-                                - common_axis.lower())
-                            .to_usize()
-                            .unwrap_unchecked()
-                        };
-                        for k in 0..matrix_free_axis_len {
-                            // # Safety
-                            // i < num_fibers
-                            // j < indices.nrows()
-                            // r < common_axis.len() == matrix_values.nrows()
-                            // k < matrix_free_axis_len
-                            unsafe {
-                                let value = uncheck_arr_mut(&mut result_row).get(k);
-                                *value = value.clone()
-                                    + uncheck_arr(tensor_values).get(j).clone()
-                                        * uncheck_arr(matrix_values).get((r, k)).clone();
-                            }
-                        }
-                    }
-                });
-
-            result_values
+    /// Copy the index of the fiber at row `row` to `index_buffer`.
+    ///
+    /// # Safety
+    /// Make sure row < indices.nrows()
+    /// Make sure except_axis_index < indices.ncols()
+    /// Make sure index_buffer.len() == indices.ncols() - 1
+    unsafe fn copy_index_except_axis(
+        &self,
+        indices: &Array2<IT>,
+        row: usize,
+        except_axis_index: usize,
+        index_buffer: &mut [IT],
+    ) where
+        IT: IdxType,
+    {
+        for i in 0..except_axis_index {
+            index_buffer
+                .get_unchecked_mut(i)
+                .clone_from(uncheck_arr(indices).get((row, i)));
         }
-
-        /// Compare fiber index at row `row_a` and `row_b`, except for one common axis.
-        ///
-        /// # Safety
-        /// Make sure row_{a,b} < indices.nrows()
-        unsafe fn index_eq_except_axis<IT>(
-            indices: &Array2<IT>,
-            row_a: usize,
-            row_b: usize,
-            except_axis_index: usize,
-        ) -> bool
-        where
-            IT: IdxType,
-        {
-            for i in (0..indices.ncols()).rev() {
-                // Performance concern:
-                // Why we don't use `indices.row()`?
-                // Because it creates an `ndarray::NdProducer`, which is painfully slow.
-                if i != except_axis_index
-                    && uncheck_arr(indices).get((row_a, i)) != uncheck_arr(indices).get((row_b, i))
-                {
-                    return false;
-                }
-            }
-            true
-        }
-
-        /// Copy the index of the fiber at row `row` to `index_buffer`.
-        ///
-        /// # Safety
-        /// Make sure row < indices.nrows()
-        /// Make sure except_axis_index < indices.ncols()
-        /// Make sure index_buffer.len() == indices.ncols() - 1
-        unsafe fn copy_index_except_axis<IT>(
-            indices: &Array2<IT>,
-            row: usize,
-            except_axis_index: usize,
-            index_buffer: &mut [IT],
-        ) where
-            IT: IdxType,
-        {
-            for i in 0..except_axis_index {
-                index_buffer
-                    .get_unchecked_mut(i)
-                    .clone_from(uncheck_arr(indices).get((row, i)));
-            }
-            for i in except_axis_index + 1..indices.ncols() {
-                index_buffer
-                    .get_unchecked_mut(i - 1)
-                    .clone_from(uncheck_arr(indices).get((row, i)));
-            }
+        for i in except_axis_index + 1..indices.ncols() {
+            index_buffer
+                .get_unchecked_mut(i - 1)
+                .clone_from(uncheck_arr(indices).get((row, i)));
         }
     }
 }

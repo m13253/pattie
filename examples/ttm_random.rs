@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
+use log::info;
 use pattie::algos::matrix::CreateRandomDenseMatrix;
 use pattie::algos::tensor::SortCOOTensor;
 use pattie::algos::tensor_matrix::COOTensorMulDenseMatrix;
@@ -7,6 +8,8 @@ use pattie::structs::axis::{axes_to_string, AxisBuilder};
 use pattie::structs::tensor::COOTensor;
 use pattie::traits::Tensor;
 use pattie::utils::hint::black_box;
+use pattie::utils::logger;
+use pattie::utils::tracer::Tracer;
 use rayon;
 use std::ffi::OsString;
 use std::fs::File;
@@ -28,9 +31,9 @@ struct Args {
     #[clap(short, long)]
     rank: u32,
 
-    /// Whether to print time of each step inside TTM
+    /// Performance tracer output file
     #[clap(long)]
-    debug_step_timing: bool,
+    trace: Option<OsString>,
 
     /// Enable multi-threading. Number of threads are determined by RAYON_NUM_THREADS or logical cores
     #[clap(short = 't', long)]
@@ -38,15 +41,22 @@ struct Args {
 }
 
 fn main() -> Result<()> {
+    logger::init();
     let args = Args::parse();
 
+    let tracer = if let Some(path) = args.trace.as_ref() {
+        Tracer::new_to_filename(path).unwrap()
+    } else {
+        Tracer::new_dummy()
+    };
+
     let input_filename = args.input;
-    eprintln!("Reading tensor from {}", input_filename.to_string_lossy());
+    info!("Reading tensor from {}", input_filename.to_string_lossy());
     let mut input_file = File::open(input_filename)?;
     let mut tensor = COOTensor::<u32, f32>::read_from_text(&mut input_file)?;
     drop(input_file);
 
-    println!(
+    info!(
         "Input tensor shape:  {}\t({} elements)",
         axes_to_string(tensor.shape()),
         tensor.num_non_zeros()
@@ -59,7 +69,7 @@ fn main() -> Result<()> {
     let ncols = AxisBuilder::new().range(0..args.rank).build();
     let matrix = CreateRandomDenseMatrix::<u32, f32>::new((nrows, ncols), 0.0, 1.0).execute()?;
 
-    println!(
+    info!(
         "Random matrix shape: {}\t({} elements)",
         axes_to_string(matrix.shape()),
         matrix.num_non_zeros()
@@ -72,10 +82,10 @@ fn main() -> Result<()> {
         .chain(iter::once(common_axis))
         .cloned()
         .collect::<Vec<_>>();
-    println!("Sorting tensor by    {}", axes_to_string(&sort_order));
+    info!("Sorting tensor by    {}", axes_to_string(&sort_order));
     SortCOOTensor::new(&mut tensor, &sort_order).execute();
 
-    println!(
+    info!(
         "Warming up... Number of threads: {}",
         if args.multi_thread {
             rayon::current_num_threads()
@@ -86,7 +96,7 @@ fn main() -> Result<()> {
     let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
     ttm_task.multi_thread = args.multi_thread;
     let output = black_box(ttm_task.execute()?);
-    println!(
+    info!(
         "Output tensor shape: {}\t({} elements)",
         axes_to_string(output.shape()),
         output.num_non_zeros()
@@ -98,10 +108,9 @@ fn main() -> Result<()> {
     let mut elapsed_time = Duration::ZERO;
     let mut rounds = 0;
 
-    println!("Running benchmark...");
-    while rounds < MIN_ROUNDS || (!args.debug_step_timing && elapsed_time < MIN_ELAPSED_TIME) {
-        let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
-        ttm_task.debug_step_timing = args.debug_step_timing;
+    info!("Running benchmark...");
+    while rounds < MIN_ROUNDS || elapsed_time < MIN_ELAPSED_TIME {
+        let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix).trace(&tracer));
         ttm_task.multi_thread = args.multi_thread;
         let start_time = Instant::now();
         let _output = black_box(ttm_task.execute()?);
@@ -110,8 +119,8 @@ fn main() -> Result<()> {
     }
     elapsed_time /= rounds;
 
-    println!("Number of iterations: {}", rounds);
-    println!(
+    info!("Number of iterations: {}", rounds);
+    info!(
         "Time per iteration:   {}.{:09} seconds",
         elapsed_time.as_secs(),
         elapsed_time.subsec_nanos()

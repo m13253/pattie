@@ -1,8 +1,10 @@
 use anyhow::Result;
 use clap::Parser;
+use log::info;
 use pattie::structs::axis::axes_to_string;
 use pattie::structs::tensor::COOTensor;
 use pattie::traits::Tensor;
+use pattie::utils::logger;
 use std::ffi::OsString;
 use std::fs::File;
 
@@ -19,22 +21,23 @@ struct Args {
 }
 
 fn main() -> Result<()> {
+    logger::init();
     let args = Args::parse();
 
     let input_filename = args.input;
-    eprintln!("Reading tensor from {}", input_filename.to_string_lossy());
+    info!("Reading tensor from {}", input_filename.to_string_lossy());
     let mut input_file = File::open(input_filename)?;
     let tensor = COOTensor::<u32, f32>::read_from_text(&mut input_file)?;
     drop(input_file);
 
-    println!(
+    info!(
         "Tensor shape: {}\t({} elements)",
         axes_to_string(tensor.shape()),
         tensor.num_non_zeros()
     );
 
     if let Some(output_filename) = args.output {
-        eprintln!("Writing tensor to {}", output_filename.to_string_lossy());
+        info!("Writing tensor to {}", output_filename.to_string_lossy());
         let mut output_file = File::create(output_filename)?;
         tensor.write_to_text(&mut output_file)?;
         drop(output_file);

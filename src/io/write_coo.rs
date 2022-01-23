@@ -8,7 +8,6 @@ use crate::structs::tensor;
 use crate::traits::{IdxType, Tensor, ValType};
 use std::fmt;
 use std::io;
-use std::io::Write;
 use streaming_iterator::StreamingIterator;
 
 impl<IT, VT> tensor::COOTensor<IT, VT>
@@ -57,6 +56,8 @@ where
         W: io::Write,
         F: FnMut(&VT) -> String,
     {
+        use std::io::Write;
+
         let mut formatter = formatter;
         let mut w = io::BufWriter::new(w);
 

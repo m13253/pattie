@@ -8,11 +8,14 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.52"
 bencher = "0.1.5"
+chrono = "0.4.19"
 clap = { version = "3.0.10", features = ["derive", "unicode", "wrap_help"] }
-crossbeam = "0.8.1"
+crossbeam-channel  = "0.5.2"
+log = "0.4.14"
 ndarray = { version = "0.15.4", features = ["blas", "matrixmultiply-threading", "rayon"] }
 ndarray-rand = "0.14.0"
 num = "0.4.0"
+env_logger = "0.9.0"
 rayon = "1.5.1"
 smallvec = { version = "1.8.0", features = ["const_generics", "union", "write"] }
 streaming-iterator = "0.1.5"

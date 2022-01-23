@@ -75,7 +75,8 @@ fn main() -> Result<()> {
     SortCOOTensor::new(&mut tensor, &sort_order).execute();
 
     println!("Warming up...");
-    let ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
+    let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
+    ttm_task.multi_thread = args.multi_thread;
     let output = black_box(ttm_task.execute()?);
     println!(
         "Output tensor shape: {}\t({} elements)",

@@ -1,7 +1,7 @@
 use crossbeam_channel;
 use crossbeam_utils;
 use log::trace;
-use scopeguard;
+use scopeguard::defer;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io;
@@ -128,12 +128,14 @@ impl Tracer {
 
     fn thread_main_with_file(
         rx: crossbeam_channel::Receiver<Record>,
-        finish: crossbeam_utils::sync::Unparker,
+        done: crossbeam_utils::sync::Unparker,
         mut file: File,
         epoch: Instant,
     ) {
         use std::io::Write;
-        scopeguard::guard(finish, |finish| finish.unpark());
+        defer! {
+            done.unpark();
+        }
 
         write!(
             file,
@@ -177,9 +179,11 @@ impl Tracer {
 
     fn thread_main_with_stdout(
         rx: crossbeam_channel::Receiver<Record>,
-        finish: crossbeam_utils::sync::Unparker,
+        done: crossbeam_utils::sync::Unparker,
     ) {
-        scopeguard::guard(finish, |finish| finish.unpark());
+        defer! {
+            done.unpark();
+        }
 
         for record in rx {
             let duration = record.finish_time.duration_since(record.start_time);

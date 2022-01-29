@@ -323,7 +323,7 @@ where
             .outer_iter_mut()
             .into_par_iter()
             .enumerate()
-            .with_max_len(num_fibers / 1024 + 1)
+            //.with_max_len(num_fibers / 1024 + 1)
             .for_each(|(i, mut result_row)| {
                 // # Safety
                 // fiber_offests.len() == num_fibers + 1

@@ -1,12 +1,16 @@
+use std::mem;
+
 use crate::structs::axis::{map_axes, Axis};
 use crate::structs::tensor::{COOTensor, COOTensorInner};
 use crate::structs::vec::{smallvec, SmallVec};
 use crate::traits::{IdxType, RawParts, Tensor, ValType};
 use crate::utils::tracer::Tracer;
 use anyhow::{anyhow, bail, Result};
+use log::info;
 use ndarray::{Array2, ArrayView1, ArrayView2, Ix1, Ix3};
 use rayon::prelude::*;
 use scopeguard::defer;
+use ubyte::ToByteUnit;
 
 /// Multiply a `COOTensor` with a `DenseMatrix`.
 pub struct COOTensorMulDenseMatrix<'a, IT, VT>
@@ -261,6 +265,12 @@ where
         let matrix_free_axis_len = matrix_values.ncols();
         let mut result_values = Array2::<VT>::zeros((num_fibers, matrix_free_axis_len));
 
+        let memory_load = (tensor_values.len() as u64
+            * (mem::size_of::<IT>() as u64
+                + matrix_free_axis_len as u64 * mem::size_of::<VT>() as u64 * 4))
+            .bytes();
+        info!(target: "COOTensorMulDenseMatrix::compute_values", "Memory load: {}", memory_load);
+
         for i in 0..num_fibers {
             // # Safety
             // fiber_offests.len() == num_fibers + 1
@@ -316,6 +326,12 @@ where
         let num_fibers = result_indices.nrows();
         let matrix_free_axis_len = matrix_values.ncols();
         let mut result_values = Array2::<VT>::zeros((num_fibers, matrix_free_axis_len));
+
+        let memory_load = (tensor_values.len() as u64
+            * (mem::size_of::<IT>() as u64
+                + matrix_free_axis_len as u64 * mem::size_of::<VT>() as u64 * 4))
+            .bytes();
+        info!(target: "COOTensorMulDenseMatrix::compute_values", "Memory load: {}", memory_load);
 
         result_values
             .outer_iter_mut()

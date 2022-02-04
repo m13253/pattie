@@ -23,6 +23,7 @@ smallvec = { version = "1.8.0", features = ["const_generics", "union", "write"] 
 streaming-iterator = "0.1.5"
 tempfile = "3.3.0"
 thiserror = "1.0.30"
+ubyte = "0.10.1"
 
 [profile.bench]
 debug = true

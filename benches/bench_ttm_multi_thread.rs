@@ -17,13 +17,13 @@ fn bench_ttm_multi_thread(b: &mut Bencher) {
 
     let tensor_shape = vec![
         AxisBuilder::new().range(1..201).build(),
-        AxisBuilder::new().range(1..1001).build(),
-        AxisBuilder::new().range(1..1001).build(),
+        AxisBuilder::new().range(1..201).build(),
+        AxisBuilder::new().range(1..201).build(),
         AxisBuilder::new().range(1..201).build(),
     ];
     let matrix_shape = (
         tensor_shape[1].clone(),
-        AxisBuilder::new().range(1..129).build(),
+        AxisBuilder::new().range(0..128).build(),
     );
     let sort_order = vec![
         tensor_shape[0].clone(),

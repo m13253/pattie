@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.52"
+anyhow = "1.0.53"
 bencher = "0.1.5"
 chrono = "0.4.19"
 clap = { version = "3.0.10", features = ["derive", "unicode", "wrap_help"] }
@@ -29,5 +29,5 @@ debug = true
 lto = true
 
 [profile.release]
-debug = 1
+debug = true
 lto = true

@@ -149,11 +149,19 @@ where
         let (result_indices, fiber_offsets) =
             self.compute_indices(tensor_indices, common_axis_index);
 
-        let memory_burden = (tensor_values.len() as u64
-            * (mem::size_of::<IT>() as u64
-                + matrix_values.ncols() as u64 * mem::size_of::<VT>() as u64 * 4))
-            .bytes();
-        info!(target: "COOTensorMulDenseMatrix::compute_values", "Memory burden: {}", memory_burden);
+        let memory_burden_lower =
+            (result_indices.nrows() as u64 * mem::size_of::<usize>() as u64 * 2
+                + matrix_values.nrows() as u64
+                    * (mem::size_of::<IT>() as u64
+                        + matrix_values.ncols() as u64 * mem::size_of::<VT>() as u64 * 4))
+                .bytes();
+        let memory_burden_upper =
+            (result_indices.nrows() as u64 * mem::size_of::<usize>() as u64 * 2
+                + tensor_values.len() as u64
+                    * (mem::size_of::<IT>() as u64
+                        + matrix_values.ncols() as u64 * mem::size_of::<VT>() as u64 * 4))
+                .bytes();
+        info!(target: "COOTensorMulDenseMatrix::compute_values", "Memory burden: lower {}, upper {}", memory_burden_lower, memory_burden_upper);
 
         let result_values = if self.multi_thread {
             self.compute_values_multi_thread(
@@ -331,7 +339,6 @@ where
             .outer_iter_mut()
             .into_par_iter()
             .enumerate()
-            .with_min_len(1024)
             .for_each(|(i, mut result_row)| {
                 // # Safety
                 // fiber_offests.len() == num_fibers + 1

@@ -338,6 +338,7 @@ where
         result_values
             .outer_iter_mut()
             .into_par_iter()
+            .with_min_len(256)
             .enumerate()
             .for_each(|(i, mut result_row)| {
                 // # Safety

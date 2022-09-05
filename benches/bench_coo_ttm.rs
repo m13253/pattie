@@ -11,7 +11,7 @@ use pattie::utils::hint::black_box;
 use test::Bencher;
 
 #[bench]
-fn bench_ttm(b: &mut Bencher) {
+fn bench_coo_ttm(b: &mut Bencher) {
     let tensor_shape = vec![
         AxisBuilder::new().range(1..201).build(),
         AxisBuilder::new().range(1..201).build(),

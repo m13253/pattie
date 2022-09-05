@@ -290,9 +290,9 @@ where
                 };
                 // We will cut a chunk on output tensor into several subchunks,
                 // a subchunk in output tensor corresponds to a chunk in input tensor
-                for c in 0..tensor_free_axes_len {
+                for c in 0..matrix_free_axis_len {
                     // Iterate elements from each subchunk in output tensor
-                    for k in 0..matrix_free_axis_len {
+                    for k in 0..tensor_free_axes_len {
                         // # Safety
                         // i < num_chunks
                         // j < tensor_indices.nrows()
@@ -300,7 +300,7 @@ where
                         // r < matrix_values.nrows()
                         // c < matrix_values.ncols() == matrix_free_axis_len
                         unsafe {
-                            let value = result_values.uget_mut((i, r, k));
+                            let value = result_values.uget_mut((i, k, c));
                             *value = value.clone()
                                 + tensor_values.uget((j, k)).clone()
                                     * matrix_values.uget((r, c)).clone();

@@ -12,7 +12,7 @@ use rayon;
 use test::Bencher;
 
 #[bench]
-fn bench_ttm_multi_thread(b: &mut Bencher) {
+fn bench_coo_ttm_multi_thread(b: &mut Bencher) {
     rayon::ThreadPoolBuilder::new().build_global().unwrap_or(());
 
     let tensor_shape = vec![

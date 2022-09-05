@@ -124,6 +124,6 @@ where
                     .checked_mul(stride)
                     .unwrap()
             })
-            .product()
+            .sum()
     }
 }

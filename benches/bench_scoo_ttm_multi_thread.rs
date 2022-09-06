@@ -11,7 +11,7 @@ use pattie::utils::hint::black_box;
 use test::Bencher;
 
 #[bench]
-fn bench_scoo_ttm(b: &mut Bencher) {
+fn bench_scoo_ttm_multi_thread(b: &mut Bencher) {
     rayon::ThreadPoolBuilder::new().build_global().unwrap_or(());
 
     let tensor_shape = vec![

@@ -3,7 +3,7 @@ use clap::Parser;
 use log::info;
 use pattie::algos::matrix::CreateRandomDenseMatrix;
 use pattie::algos::tensor::SortCOOTensor;
-use pattie::algos::tensor_matrix::COOTensorMulDenseMatrix;
+use pattie::algos::tensor_matrix::{COOTensorMulDenseMatrix, SemiCOOTensorMulDenseMatrix};
 use pattie::structs::axis::{axes_to_string, AxisBuilder};
 use pattie::structs::tensor::COOTensor;
 use pattie::traits::Tensor;
@@ -17,7 +17,7 @@ use std::iter;
 use std::time::{Duration, Instant};
 
 /// Tensor-Times-Matrix multiplication example
-#[derive(Debug, Parser)]
+#[derive(clap::Parser, Debug)]
 struct Args {
     /// Input tensor file
     #[clap(short, long)]
@@ -31,6 +31,10 @@ struct Args {
     #[clap(short, long)]
     rank: u32,
 
+    /// Algorithm to use
+    #[clap(short, long, value_enum)]
+    algo: Algo,
+
     /// Performance tracer output file
     #[clap(long)]
     trace: Option<OsString>,
@@ -38,6 +42,14 @@ struct Args {
     /// Enable multi-threading. Number of threads are determined by RAYON_NUM_THREADS or logical cores
     #[clap(short = 't', long)]
     multi_thread: bool,
+}
+
+#[derive(clap::ValueEnum, Copy, Clone, Debug)]
+enum Algo {
+    /// COO tensor times matrix multiplication
+    COO,
+    /// SemiCOO tensor times matrix multiplication
+    SemiCOO,
 }
 
 fn main() -> Result<()> {
@@ -110,11 +122,27 @@ fn main() -> Result<()> {
 
     info!("Running benchmark...");
     while rounds < MIN_ROUNDS || elapsed_time < MIN_ELAPSED_TIME {
-        let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix).trace(&tracer));
-        ttm_task.multi_thread = args.multi_thread;
-        let start_time = Instant::now();
-        let _output = black_box(ttm_task.execute()?);
-        elapsed_time += start_time.elapsed();
+        let output = match args.algo {
+            Algo::COO => {
+                let mut ttm_task =
+                    black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix).trace(&tracer));
+                ttm_task.multi_thread = args.multi_thread;
+                let start_time = Instant::now();
+                let output = ttm_task.execute()?;
+                elapsed_time += start_time.elapsed();
+                output
+            }
+            Algo::SemiCOO => {
+                let mut ttm_task =
+                    black_box(SemiCOOTensorMulDenseMatrix::new(&tensor, &matrix).trace(&tracer));
+                ttm_task.multi_thread = args.multi_thread;
+                let start_time = Instant::now();
+                let output = ttm_task.execute()?;
+                elapsed_time += start_time.elapsed();
+                output
+            }
+        };
+        let _ = black_box(output);
         rounds += 1;
     }
     elapsed_time /= rounds;

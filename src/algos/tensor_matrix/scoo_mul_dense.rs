@@ -7,6 +7,7 @@ use crate::traits::{IdxType, RawParts, Tensor, ValType};
 use crate::utils::tracer::Tracer;
 use anyhow::{anyhow, bail, Result};
 use ndarray::{Array2, Array3, ArrayView2, Ix3};
+use rayon::prelude::*;
 use scopeguard::defer;
 
 /// Multiply a `SemiCOOTensor` with a `DenseMatrix`.
@@ -163,8 +164,8 @@ where
             .chain(self.tensor.dense_axes().iter().map(|axis| axis.len()))
             .chain(iter::once(matrix_values.ncols()))
             .collect::<SmallVec<_>>();
-        let result_values = self
-            .compute_values(
+        let result_values = if self.multi_thread {
+            self.compute_values(
                 tensor_indices,
                 &tensor_values,
                 &matrix_values,
@@ -173,7 +174,18 @@ where
                 common_axis,
                 common_axis_index,
             )
-            .into_shape(result_values_shape.as_slice())?;
+        } else {
+            self.compute_values_multi_thread(
+                tensor_indices,
+                &tensor_values,
+                &matrix_values,
+                &result_indices,
+                &chunk_offsets,
+                common_axis,
+                common_axis_index,
+            )
+        }
+        .into_shape(result_values_shape.as_slice())?;
 
         let result = COOTensorInner {
             name: None,
@@ -262,7 +274,7 @@ where
     {
         let event = self.tracer.start();
         defer! {
-            event.finish("COOTensorMulDenseMatrix::compute_values");
+            event.finish("SemiCOOTensorMulDenseMatrix::compute_values");
         }
 
         let num_chunks = result_indices.nrows();
@@ -288,11 +300,11 @@ where
                         .to_usize()
                         .unwrap_unchecked()
                 };
-                // We will cut a chunk on output tensor into several subchunks,
-                // a subchunk in output tensor corresponds to a chunk in input tensor
-                for c in 0..matrix_free_axis_len {
-                    // Iterate elements from each subchunk in output tensor
-                    for k in 0..tensor_free_axes_len {
+                // Iterate elements from each subchunk in output tensor
+                for k in 0..tensor_free_axes_len {
+                    // We will cut a chunk on output tensor into several subchunks,
+                    // a subchunk in output tensor corresponds to a chunk in input tensor
+                    for c in 0..matrix_free_axis_len {
                         // # Safety
                         // i < num_chunks
                         // j < tensor_indices.nrows()
@@ -309,6 +321,79 @@ where
                 }
             }
         }
+
+        result_values
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn compute_values_multi_thread(
+        &self,
+        tensor_indices: &Array2<IT>,
+        tensor_values: &ArrayView2<VT>,
+        matrix_values: &ArrayView2<VT>,
+        result_indices: &Array2<IT>,
+        chunk_offsets: &[usize],
+        common_axis: &Axis<IT>,
+        common_axis_index: usize,
+    ) -> Array3<VT>
+    where
+        IT: IdxType,
+        VT: ValType,
+    {
+        let event = self.tracer.start();
+        defer! {
+            event.finish("SemiCOOTensorMulDenseMatrix::compute_values_multi_thread");
+        }
+
+        let num_chunks = result_indices.nrows();
+        let tensor_free_axes_len = tensor_values.ncols();
+        let matrix_free_axis_len = matrix_values.ncols();
+        let mut result_values =
+            Array3::<VT>::zeros((num_chunks, tensor_free_axes_len, matrix_free_axis_len));
+
+        // i is chunk-level on the result tensor
+        result_values
+            .outer_iter_mut()
+            .into_par_iter()
+            .with_min_len(256)
+            .enumerate()
+            .for_each(|(i, mut result_row)| {
+                // # Safety
+                // chunk_offsets.len() == num_chunks + 1
+                let inz_begin = *unsafe { chunk_offsets.get_unchecked(i) };
+                let inz_end = *unsafe { chunk_offsets.get_unchecked(i + 1) };
+                // j is chunk-level on the input tensor,
+                // for each output[i] corresponds to all input[j]
+                for j in inz_begin..inz_end {
+                    // # Safety
+                    // j < inz_end <= tensor_indices.nrows()
+                    // 0 <= r < common_axis.size()
+                    let r = unsafe {
+                        (*tensor_indices.uget((j, common_axis_index)) - common_axis.lower())
+                            .to_usize()
+                            .unwrap_unchecked()
+                    };
+                    // Iterate elements from each subchunk in output tensor
+                    for k in 0..tensor_free_axes_len {
+                        // We will cut a chunk on output tensor into several subchunks,
+                        // a subchunk in output tensor corresponds to a chunk in input tensor
+                        for c in 0..matrix_free_axis_len {
+                            // # Safety
+                            // i < num_chunks
+                            // j < tensor_indices.nrows()
+                            // k < tensor_values.ncols() == tensor_free_axes_len
+                            // r < matrix_values.nrows()
+                            // c < matrix_values.ncols() == matrix_free_axis_len
+                            unsafe {
+                                let value = result_row.uget_mut((k, c));
+                                *value = value.clone()
+                                    + tensor_values.uget((j, k)).clone()
+                                        * matrix_values.uget((r, c)).clone();
+                            }
+                        }
+                    }
+                }
+            });
 
         result_values
     }

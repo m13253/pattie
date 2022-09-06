@@ -135,7 +135,7 @@ fn main() -> Result<()> {
 
     info!("Running benchmark...");
     while rounds < MIN_ROUNDS || elapsed_time < MIN_ELAPSED_TIME {
-        let output = match args.algo {
+        match args.algo {
             Algo::COO => {
                 let mut ttm_task =
                     black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix).trace(&tracer));
@@ -143,6 +143,7 @@ fn main() -> Result<()> {
                 let start_time = Instant::now();
                 let _output = black_box(ttm_task.execute()?);
                 elapsed_time += start_time.elapsed();
+                rounds += 1;
             }
             Algo::SemiCOO => {
                 let mut ttm_task =
@@ -151,10 +152,9 @@ fn main() -> Result<()> {
                 let start_time = Instant::now();
                 let _output = black_box(ttm_task.execute()?);
                 elapsed_time += start_time.elapsed();
+                rounds += 1;
             }
         };
-        let _ = black_box(output);
-        rounds += 1;
     }
     elapsed_time /= rounds;
 

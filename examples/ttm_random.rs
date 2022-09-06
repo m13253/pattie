@@ -105,15 +105,28 @@ fn main() -> Result<()> {
             1
         }
     );
-    let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
-    ttm_task.multi_thread = args.multi_thread;
-    let output = black_box(ttm_task.execute()?);
-    info!(
-        "Output tensor shape: {}\t({} elements)",
-        axes_to_string(output.shape()),
-        output.num_non_zeros()
-    );
-    drop(output);
+    match args.algo {
+        Algo::COO => {
+            let mut ttm_task = black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix));
+            ttm_task.multi_thread = args.multi_thread;
+            let output = black_box(ttm_task.execute()?);
+            info!(
+                "Output tensor shape: {}\t({} elements)",
+                axes_to_string(output.shape()),
+                output.num_non_zeros()
+            );
+        }
+        Algo::SemiCOO => {
+            let mut ttm_task = black_box(SemiCOOTensorMulDenseMatrix::new(&tensor, &matrix));
+            ttm_task.multi_thread = args.multi_thread;
+            let output = black_box(ttm_task.execute()?);
+            info!(
+                "Output tensor shape: {}\t({} elements)",
+                axes_to_string(output.shape()),
+                output.num_non_zeros()
+            );
+        }
+    }
 
     const MIN_ELAPSED_TIME: Duration = Duration::from_secs(3);
     const MIN_ROUNDS: u32 = 5;
@@ -128,18 +141,16 @@ fn main() -> Result<()> {
                     black_box(COOTensorMulDenseMatrix::new(&tensor, &matrix).trace(&tracer));
                 ttm_task.multi_thread = args.multi_thread;
                 let start_time = Instant::now();
-                let output = ttm_task.execute()?;
+                let _output = black_box(ttm_task.execute()?);
                 elapsed_time += start_time.elapsed();
-                output
             }
             Algo::SemiCOO => {
                 let mut ttm_task =
                     black_box(SemiCOOTensorMulDenseMatrix::new(&tensor, &matrix).trace(&tracer));
                 ttm_task.multi_thread = args.multi_thread;
                 let start_time = Instant::now();
-                let output = ttm_task.execute()?;
+                let _output = black_box(ttm_task.execute()?);
                 elapsed_time += start_time.elapsed();
-                output
             }
         };
         let _ = black_box(output);

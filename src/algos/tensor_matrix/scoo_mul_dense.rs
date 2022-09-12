@@ -165,7 +165,7 @@ where
             .chain(iter::once(matrix_values.ncols()))
             .collect::<SmallVec<_>>();
         let result_values = if self.multi_thread {
-            self.compute_values(
+            self.compute_values_multi_thread(
                 tensor_indices,
                 &tensor_values,
                 &matrix_values,
@@ -175,7 +175,7 @@ where
                 common_axis_index,
             )
         } else {
-            self.compute_values_multi_thread(
+            self.compute_values(
                 tensor_indices,
                 &tensor_values,
                 &matrix_values,
